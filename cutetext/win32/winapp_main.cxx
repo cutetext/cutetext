@@ -5,36 +5,20 @@
  * @file winapp_main.cxx
  * @author James Zeng
  * @date 2018-08-09
- * @brief Main code for the Windows version of the editor..
+ * @brief Main code for the Windows version of the editor.
  *
  * @see https://github.com/cutetext/cutetext
  */
 
 #include <time.h>
 
-#include "SciTEWin.h"
+#include "cute_frame.h"
 
-#ifndef NO_EXTENSIONS
-#include "MultiplexExtension.h"
-
-#ifndef NO_FILER
-#include "DirectorExtension.h"
-#endif
-
-#ifndef NO_LUA
-#include "LuaExtension.h"
-#endif
-
-#endif
 
 #ifdef STATIC_BUILD
-const GUI::gui_char appName[] = GUI_TEXT("Sc1");
+const GUI::GUIChar appName[] = GUI_TEXT("CuteTextOne");
 #else
-const GUI::gui_char appName[] = GUI_TEXT("SciTE");
-#endif
-
-#if defined(_MSC_VER) && defined(_PREFAST_)
-#pragma warning(disable: 28251)
+const GUI::GUIChar appName[] = GUI_TEXT("CuteText");
 #endif
 
 #ifndef LOAD_LIBRARY_SEARCH_APPLICATION_DIR
