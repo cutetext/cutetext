@@ -139,11 +139,62 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\src\cookie.h" />
+    <ClInclude Include="..\src\cutetext.h" />
+    <ClInclude Include="..\src\cutetext_base.h" />
+    <ClInclude Include="..\src\cutetext_keys.h" />
+    <ClInclude Include="..\src\cutetext_lua_win.h" />
+    <ClInclude Include="..\src\editor_config.h" />
+    <ClInclude Include="..\src\extender.h" />
+    <ClInclude Include="..\src\filepath.h" />
+    <ClInclude Include="..\src\fileworker.h" />
     <ClInclude Include="..\src\gui.h" />
-    <ClInclude Include="cute_frame.h" />
+    <ClInclude Include="..\src\iface_table.h" />
+    <ClInclude Include="..\src\job_queue.h" />
+    <ClInclude Include="..\src\lua_extension.h" />
+    <ClInclude Include="..\src\match_marker.h" />
+    <ClInclude Include="..\src\multiplex_extension.h" />
+    <ClInclude Include="..\src\mutex.h" />
+    <ClInclude Include="..\src\propset_file.h" />
+    <ClInclude Include="..\src\scintilla_window.h" />
+    <ClInclude Include="..\src\string_helpers.h" />
+    <ClInclude Include="..\src\string_list.h" />
+    <ClInclude Include="..\src\strip_definition.h" />
+    <ClInclude Include="..\src\style_definition.h" />
+    <ClInclude Include="..\src\style_writer.h" />
+    <ClInclude Include="..\src\utf8_16.h" />
+    <ClInclude Include="..\src\worker.h" />
+    <ClInclude Include="cutetext_win.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="winapp_main.cxx" />
+    <ClCompile Include="..\src\cookie.cxx" />
+    <ClCompile Include="..\src\credits.cxx" />
+    <ClCompile Include="..\src\cutetext_base.cxx" />
+    <ClCompile Include="..\src\cutetext_buffers.cxx" />
+    <ClCompile Include="..\src\cutetext_io.cxx" />
+    <ClCompile Include="..\src\cutetext_props.cxx" />
+    <ClCompile Include="..\src\editor_config.cxx" />
+    <ClCompile Include="..\src\export_html.cxx" />
+    <ClCompile Include="..\src\export_pdf.cxx" />
+    <ClCompile Include="..\src\export_rtf.cxx" />
+    <ClCompile Include="..\src\export_tex.cxx" />
+    <ClCompile Include="..\src\export_xml.cxx" />
+    <ClCompile Include="..\src\filepath.cxx" />
+    <ClCompile Include="..\src\fileworker.cxx" />
+    <ClCompile Include="..\src\iface_table.cxx" />
+    <ClCompile Include="..\src\job_queue.cxx" />
+    <ClCompile Include="..\src\lua_extension.cxx" />
+    <ClCompile Include="..\src\match_marker.cxx" />
+    <ClCompile Include="..\src\multiplex_extension.cxx" />
+    <ClCompile Include="..\src\propset_file.cxx" />
+    <ClCompile Include="..\src\scintilla_window.cxx" />
+    <ClCompile Include="..\src\string_helpers.cxx" />
+    <ClCompile Include="..\src\string_list.cxx" />
+    <ClCompile Include="..\src\style_definition.cxx" />
+    <ClCompile Include="..\src\style_writer.cxx" />
+    <ClCompile Include="..\src\utf8_16.cxx" />
+    <ClCompile Include="appmain_win.cxx" />
+    <ClCompile Include="cutetext_win.cxx" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

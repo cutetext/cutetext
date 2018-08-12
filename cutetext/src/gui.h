@@ -133,8 +133,8 @@ public:
 };
 
 class ElapsedTime {
-    long big_bit_;
-    long little_bit_;
+    long bigBit_;
+    long littleBit_;
 public:
     ElapsedTime();
     double Duration(bool reset=false);
