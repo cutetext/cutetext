@@ -10,14 +10,14 @@
  * @see https://github.com/cutetext/cutetext
  */
 
-#ifndef SCITE_H
-#define SCITE_H
+#ifndef CUTETEXT_H
+#define CUTETEXT_H
 
 // Version numbers and dates
-#define VERSION_SCITE "4.1.0"
-#define VERSION_WORDS 4, 1, 0, 0
-#define COPYRIGHT_DATES "December 1998-June 2018"
-#define COPYRIGHT_YEARS "1998-2018"
+#define VERSION_CUTETEXT "0.0.1"
+#define VERSION_WORDS 0, 0, 1, 0
+#define COPYRIGHT_DATES "August 2018-August 2018"
+#define COPYRIGHT_YEARS "2018-2018"
 
 // Menu IDs.
 // These are located 100 apart. No one will want more than 100 in each menu ;)
@@ -209,7 +209,7 @@
 // Help
 #define IDM_HELP			901
 #define IDM_ABOUT			902
-#define IDM_HELP_SCITE		903
+#define IDM_HELP_CUTETEXT		903
 
 // Windows specific windowing options
 #define IDM_ONTOP			960
