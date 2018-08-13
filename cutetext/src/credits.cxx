@@ -28,23 +28,22 @@
 #include "ILexer.h"
 #include "Scintilla.h"
 
-#include "GUI.h"
-#include "ScintillaWindow.h"
-#include "StringList.h"
-#include "StringHelpers.h"
-#include "FilePath.h"
-#include "StyleDefinition.h"
-#include "PropSetFile.h"
-#include "StyleWriter.h"
-#include "Extender.h"
-#include "SciTE.h"
-#include "Mutex.h"
-#include "JobQueue.h"
-
-#include "Cookie.h"
-#include "Worker.h"
-#include "MatchMarker.h"
-#include "SciTEBase.h"
+#include "gui.h"
+#include "scintilla_window.h"
+#include "string_list.h"
+#include "string_helpers.h"
+#include "filepath.h"
+#include "style_definition.h"
+#include "propset_file.h"
+#include "style_writer.h"
+#include "extender.h"
+#include "cutetext.h"
+#include "mutex.h"
+#include "job_queue.h"
+#include "cookie.h"
+#include "worker.h"
+#include "match_marker.h"
+#include "cutetext_base.h"
 
 // Contributor names are in UTF-8
 static const char *contributors[] = {
@@ -447,18 +446,18 @@ static const char *contributors[] = {
 
 // AddStyledText only called from About so static size buffer is OK
 static void AddStyledText(GUI::ScintillaWindow &wsci, const char *s, int attr) {
-	const size_t len = strlen(s);
-	std::vector<char> buf(len*2);
-	for (size_t i = 0; i < len; i++) {
-		buf[i*2] = s[i];
-		buf[i*2 + 1] = static_cast<char>(attr);
-	}
-	wsci.CallString(SCI_ADDSTYLEDTEXT,
-	        static_cast<int>(len*2), &buf[0]);
+    const size_t len = strlen(s);
+    std::vector<char> buf(len*2);
+    for (size_t i = 0; i < len; i++) {
+        buf[i*2] = s[i];
+        buf[i*2 + 1] = static_cast<char>(attr);
+    }
+    wsci.CallString(SCI_ADDSTYLEDTEXT,
+            static_cast<int>(len*2), &buf[0]);
 }
 
 static void SetAboutStyle(GUI::ScintillaWindow &wsci, int style, Colour fore) {
-	wsci.Call(SCI_STYLESETFORE, style, fore);
+    wsci.Call(SCI_STYLESETFORE, style, fore);
 }
 
 namespace {
@@ -467,106 +466,106 @@ namespace {
 // Pseudo-random algorithm based on R. G. Dromey "How to Solve it by Computer" page 122.
 
 class RandomColour {
-	int mult;
-	int incr;
-	int modulus;
-	int randomValue;
-	int NextRandom() {
-		randomValue = (mult * randomValue + incr) % modulus;
-		return randomValue;
-	}
-	void HackColour(int &n) {
-		n += (NextRandom() % 100) - 50;
-		if (n > 0xE7)
-			n = 0x60;
-		if (n < 0)
-			n = 0x80;
-	}
+    int mult_;
+    int incr_;
+    int modulus_;
+    int randomValue_;
+    int NextRandom() {
+        randomValue_ = (mult_ * randomValue_ + incr_) % modulus_;
+        return randomValue_;
+    }
+    void HackColour(int &n) {
+        n += (NextRandom() % 100) - 50;
+        if (n > 0xE7)
+            n = 0x60;
+        if (n < 0)
+            n = 0x80;
+    }
 public:
-	int r;
-	int g;
-	int b;
-	RandomColour() :
-		mult(109),
-		incr(853),
-		modulus(4096),
-		randomValue(time(0) % modulus),
-		r(NextRandom() % 256),
-		g(NextRandom() % 256),
-		b(NextRandom() % 256) {
-	}
-	void Next() {
-		HackColour(r);
-		HackColour(g);
-		HackColour(b);
-	}
+    int r_;
+    int g_;
+    int b_;
+    RandomColour() :
+        mult_(109),
+        incr_(853),
+        modulus_(4096),
+        randomValue_(time(0) % modulus_),
+        r_(NextRandom() % 256),
+        g_(NextRandom() % 256),
+        b_(NextRandom() % 256) {
+    }
+    void Next() {
+        HackColour(r_);
+        HackColour(g_);
+        HackColour(b_);
+    }
 };
 
 }
 
 void SciTEBase::SetAboutMessage(GUI::ScintillaWindow &wsci, const char *appTitle) {
-	if (wsci.Created()) {
-		wsci.Call(SCI_STYLERESETDEFAULT, 0, 0);
-		std::string sVersion = " ";
-		sVersion += VERSION_SCITE;
-		sVersion += " ";
+    if (wsci.Created()) {
+        wsci.Call(SCI_STYLERESETDEFAULT, 0, 0);
+        std::string sVersion = " ";
+        sVersion += VERSION_CUTETEXT;
+        sVersion += " ";
 #if defined(GTK)
-		wsci.CallString(SCI_STYLESETFONT, STYLE_DEFAULT, "Serif");
-		const int fontSize = 14;
-		sVersion += "compiled for GTK+ ";
-		sVersion += StdStringFromInteger(GTK_MAJOR_VERSION);
-		sVersion += ".";
-		sVersion += StdStringFromInteger(GTK_MINOR_VERSION);
-		sVersion += ".";
-		sVersion += StdStringFromInteger(GTK_MICRO_VERSION);
+        wsci.CallString(SCI_STYLESETFONT, STYLE_DEFAULT, "Serif");
+        const int fontSize = 14;
+        sVersion += "compiled for GTK+ ";
+        sVersion += StdStringFromInteger(GTK_MAJOR_VERSION);
+        sVersion += ".";
+        sVersion += StdStringFromInteger(GTK_MINOR_VERSION);
+        sVersion += ".";
+        sVersion += StdStringFromInteger(GTK_MICRO_VERSION);
 #else
-		const int fontSize = 15;
+        const int fontSize = 15;
 #endif
-		sVersion += "\n";
+        sVersion += "\n";
 
-		wsci.Call(SCI_SETCODEPAGE, SC_CP_UTF8, 0);
+        wsci.Call(SCI_SETCODEPAGE, SC_CP_UTF8, 0);
 
-		wsci.Call(SCI_STYLESETSIZE, STYLE_DEFAULT, fontSize);
-		wsci.Call(SCI_STYLESETBACK, STYLE_DEFAULT, ColourRGB(0xff, 0xff, 0xff));
-		wsci.Call(SCI_STYLECLEARALL, 0, 0);
+        wsci.Call(SCI_STYLESETSIZE, STYLE_DEFAULT, fontSize);
+        wsci.Call(SCI_STYLESETBACK, STYLE_DEFAULT, ColourRGB(0xff, 0xff, 0xff));
+        wsci.Call(SCI_STYLECLEARALL, 0, 0);
 
-		SetAboutStyle(wsci, 0, ColourRGB(0xff, 0xff, 0xff));
-		wsci.Call(SCI_STYLESETSIZE, 0, fontSize);
-		wsci.Call(SCI_STYLESETBACK, 0, ColourRGB(0, 0, 0x80));
-		AddStyledText(wsci, appTitle, 0);
-		AddStyledText(wsci, "\n", 0);
-		SetAboutStyle(wsci, 1, ColourRGB(0, 0, 0));
-		const int trsSty = 5; // define the stylenumber to assign font for translators.
-		std::string translator = GetTranslationToAbout("TranslationCredit", false);
-		SetAboutStyle(wsci, trsSty, ColourRGB(0, 0, 0));
-		AddStyledText(wsci, GetTranslationToAbout("Version").c_str(), trsSty);
-		AddStyledText(wsci, sVersion.c_str(), 1);
-		AddStyledText(wsci, "    " __DATE__ " " __TIME__ "\n", 1);
-		SetAboutStyle(wsci, 2, ColourRGB(0, 0, 0));
-		wsci.Call(SCI_STYLESETITALIC, 2, 1);
-		AddStyledText(wsci, GetTranslationToAbout("by").c_str(), trsSty);
-		AddStyledText(wsci, " Neil Hodgson.\n", 2);
-		SetAboutStyle(wsci, 3, ColourRGB(0, 0, 0));
-		AddStyledText(wsci, COPYRIGHT_DATES ".\n", 3);
-		SetAboutStyle(wsci, 4, ColourRGB(0, 0x7f, 0x7f));
-		AddStyledText(wsci, "http://www.scintilla.org\n", 4);
-		AddStyledText(wsci, "Lua scripting language by TeCGraf, PUC-Rio\n", 3);
-		AddStyledText(wsci, "    http://www.lua.org\n", 4);
-		if (translator.length()) {
-			AddStyledText(wsci, translator.c_str(), trsSty);
-			AddStyledText(wsci, "\n", 5);
-		}
-		AddStyledText(wsci, GetTranslationToAbout("Contributors:").c_str(), trsSty);
-		for (unsigned int co = 0;co < std::size(contributors);co++) {
-			const int colourIndex = 50 + (co % 78);
-			AddStyledText(wsci, "\n    ", colourIndex);
-			AddStyledText(wsci, contributors[co], colourIndex);
-		}
-		RandomColour colour;
-		for (unsigned int sty = 0;sty < 78; sty++) {
-			colour.Next();
-			SetAboutStyle(wsci, sty + 50, ColourRGB(colour.r, colour.g, colour.b));
-		}
-		wsci.Call(SCI_SETREADONLY, 1, 0);
-	}
+        SetAboutStyle(wsci, 0, ColourRGB(0xff, 0xff, 0xff));
+        wsci.Call(SCI_STYLESETSIZE, 0, fontSize);
+        wsci.Call(SCI_STYLESETBACK, 0, ColourRGB(0, 0, 0x80));
+        AddStyledText(wsci, appTitle, 0);
+        AddStyledText(wsci, "\n", 0);
+        SetAboutStyle(wsci, 1, ColourRGB(0, 0, 0));
+        const int trsSty = 5; // define the stylenumber to assign font for translators.
+        std::string translator = GetTranslationToAbout("TranslationCredit", false);
+        SetAboutStyle(wsci, trsSty, ColourRGB(0, 0, 0));
+        AddStyledText(wsci, GetTranslationToAbout("Version").c_str(), trsSty);
+        AddStyledText(wsci, sVersion.c_str(), 1);
+        AddStyledText(wsci, "    " __DATE__ " " __TIME__ "\n", 1);
+        SetAboutStyle(wsci, 2, ColourRGB(0, 0, 0));
+        wsci.Call(SCI_STYLESETITALIC, 2, 1);
+        AddStyledText(wsci, GetTranslationToAbout("by").c_str(), trsSty);
+        AddStyledText(wsci, " James Zeng.\n", 2);
+        SetAboutStyle(wsci, 3, ColourRGB(0, 0, 0));
+        AddStyledText(wsci, COPYRIGHT_DATES ".\n", 3);
+        SetAboutStyle(wsci, 4, ColourRGB(0, 0x7f, 0x7f));
+        AddStyledText(wsci, "https://github.com/cutetext/cutetext\n", 4);
+        AddStyledText(wsci, "Lua scripting language by TeCGraf, PUC-Rio\n", 3);
+        AddStyledText(wsci, "    http://www.lua.org\n", 4);
+        if (translator.length()) {
+            AddStyledText(wsci, translator.c_str(), trsSty);
+            AddStyledText(wsci, "\n", 5);
+        }
+        AddStyledText(wsci, GetTranslationToAbout("Contributors:").c_str(), trsSty);
+        for (unsigned int co = 0;co < std::size(contributors);co++) {
+            const int colourIndex = 50 + (co % 78);
+            AddStyledText(wsci, "\n    ", colourIndex);
+            AddStyledText(wsci, contributors[co], colourIndex);
+        }
+        RandomColour randColour;
+        for (unsigned int sty = 0;sty < 78; sty++) {
+            randColour.Next();
+            SetAboutStyle(wsci, sty + 50, ColourRGB(randColour.r_, randColour.g_, randColour.b_));
+        }
+        wsci.Call(SCI_SETREADONLY, 1, 0);
+    }
 }
