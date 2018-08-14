@@ -67,7 +67,7 @@ Searcher::Searcher() {
 	failedfind = false;
 	findInStyle = false;
 	findStyle = 0;
-	closeFind = CloseFind::closeAlways;
+	closeFind = CloseFind::kCloseAlways;
 
 	focusOnReplace = false;
 }
@@ -176,11 +176,11 @@ SciTEBase::SciTEBase(Extension *ext) : apis(true), pwFocussed(&wEditor), extende
 	lastPosCallTip = 0;
 
 	margin = false;
-	marginWidth = marginWidthDefault;
+	marginWidth = kMarginWidthDefault;
 	foldMargin = true;
-	foldMarginWidth = foldMarginWidthDefault;
+	foldMarginWidth = kFoldMarginWidthDefault;
 	lineNumbers = false;
-	lineNumbersWidth = lineNumbersWidthDefault;
+	lineNumbersWidth = kLineNumbersWidthDefault;
 	lineNumbersExpand = false;
 
 	macrosEnabled = false;
@@ -212,7 +212,7 @@ SciTEBase::~SciTEBase() {
 }
 
 void SciTEBase::Finalise() {
-	TimerEnd(timerAutoSave);
+	TimerEnd(kTimerAutoSave);
 }
 
 void SciTEBase::WorkerCommand(int cmd, Worker *pWorker) {
@@ -392,7 +392,7 @@ int SciTEBase::IsLinePreprocessorCondition(char *line) {
 			return it->second;
 		}
 	}
-	return ppcNone;
+	return kPpcNone;
 }
 
 /**
@@ -416,9 +416,9 @@ bool SciTEBase::FindMatchingPreprocessorCondition(
 		GetLine(line, sizeof(line), curLine);
 		const int status = IsLinePreprocessorCondition(line);
 
-		if ((direction == 1 && status == ppcStart) || (direction == -1 && status == ppcEnd)) {
+		if ((direction == 1 && status == kPpcStart) || (direction == -1 && status == kPpcEnd)) {
 			level++;
-		} else if (level > 0 && ((direction == 1 && status == ppcEnd) || (direction == -1 && status == ppcStart))) {
+		} else if (level > 0 && ((direction == 1 && status == kPpcEnd) || (direction == -1 && status == kPpcStart))) {
 			level--;
 		} else if (level == 0 && (status == condEnd1 || status == condEnd2)) {
 			isInside = true;
@@ -448,9 +448,9 @@ bool SciTEBase::FindMatchingPreprocCondPosition(
 	status = IsLinePreprocessorCondition(line);
 
 	switch (status) {
-	case ppcStart:
+	case kPpcStart:
 		if (isForward) {
-			isInside = FindMatchingPreprocessorCondition(curLine, 1, ppcMiddle, ppcEnd);
+			isInside = FindMatchingPreprocessorCondition(curLine, 1, kPpcMiddle, kPpcEnd);
 		} else {
 			mppcMatch = mppcAtCaret;
 			return true;
@@ -458,9 +458,9 @@ bool SciTEBase::FindMatchingPreprocCondPosition(
 		break;
 	case ppcMiddle:
 		if (isForward) {
-			isInside = FindMatchingPreprocessorCondition(curLine, 1, ppcMiddle, ppcEnd);
+			isInside = FindMatchingPreprocessorCondition(curLine, 1, kPpcMiddle, kPpcEnd);
 		} else {
-			isInside = FindMatchingPreprocessorCondition(curLine, -1, ppcStart, ppcMiddle);
+			isInside = FindMatchingPreprocessorCondition(curLine, -1, kPpcStart, kPpcMiddle);
 		}
 		break;
 	case ppcEnd:
@@ -468,15 +468,15 @@ bool SciTEBase::FindMatchingPreprocCondPosition(
 			mppcMatch = mppcAtCaret;
 			return true;
 		} else {
-			isInside = FindMatchingPreprocessorCondition(curLine, -1, ppcStart, ppcMiddle);
+			isInside = FindMatchingPreprocessorCondition(curLine, -1, kPpcStart, kPpcMiddle);
 		}
 		break;
 	default:   	// Should be noPPC
 
 		if (isForward) {
-			isInside = FindMatchingPreprocessorCondition(curLine, 1, ppcMiddle, ppcEnd);
+			isInside = FindMatchingPreprocessorCondition(curLine, 1, kPpcMiddle, kPpcEnd);
 		} else {
-			isInside = FindMatchingPreprocessorCondition(curLine, -1, ppcStart, ppcMiddle);
+			isInside = FindMatchingPreprocessorCondition(curLine, -1, kPpcStart, kPpcMiddle);
 		}
 		break;
 	}
@@ -639,7 +639,7 @@ void SciTEBase::SetWindowName() {
 		windowName += GUI_TEXT("]");
 	}
 
-	wSciTE.SetTitle(windowName.c_str());
+	wCuteText_.SetTitle(windowName.c_str());
 }
 
 Sci_CharacterRange SciTEBase::GetSelection() {
@@ -741,7 +741,7 @@ void SciTEBase::HighlightCurrentWord(bool highlight) {
 	}
 	GUI::ScintillaWindow &wCurrent = wOutput.HasFocus() ? wOutput : wEditor;
 	// Remove old indicators if any exist.
-	wCurrent.Call(SCI_SETINDICATORCURRENT, indicatorHighlightCurrentWord);
+	wCurrent.Call(SCI_SETINDICATORCURRENT, kIndicatorHighlightCurrentWord);
 	const int lenDoc = wCurrent.Call(SCI_GETLENGTH);
 	wCurrent.Call(SCI_INDICATORCLEARRANGE, 0, lenDoc);
 	if (!highlight)
@@ -754,9 +754,9 @@ void SciTEBase::HighlightCurrentWord(bool highlight) {
 	        &SciTEBase::islexerwordcharforsel);
 	if (sWordToFind.length() == 0 || (sWordToFind.find_first_of("\n\r ") != std::string::npos))
 		return; // No highlight when no selection or multi-lines selection.
-	if (noUserSelection && currentWordHighlight.statesOfDelay == currentWordHighlight.noDelay) {
+	if (noUserSelection && currentWordHighlight.statesOfDelay == currentWordHighlight.kNoDelay) {
 		// Manage delay before highlight when no user selection but there is word at the caret.
-		currentWordHighlight.statesOfDelay = currentWordHighlight.delay;
+		currentWordHighlight.statesOfDelay = currentWordHighlight.kDelay;
 		// Reset timer
 		currentWordHighlight.elapsedTimes.Duration(true);
 		return;
@@ -771,7 +771,7 @@ void SciTEBase::HighlightCurrentWord(bool highlight) {
 
 	matchMarker.StartMatch(&wCurrent, wordToFind,
 		SCFIND_MATCHCASE | SCFIND_WHOLEWORD, selectedStyle,
-		indicatorHighlightCurrentWord, -1);
+		kIndicatorHighlightCurrentWord, -1);
 	SetIdler(true);
 }
 
@@ -940,10 +940,10 @@ static std::string UnSlashAsNeeded(const std::string &s, bool escapes, bool regu
 
 void SciTEBase::RemoveFindMarks() {
 	findMarker.Stop();	// Cancel ongoing background find
-	if (CurrentBuffer()->findMarks != Buffer::fmNone) {
-		wEditor.Call(SCI_SETINDICATORCURRENT, indicatorMatch);
+	if (CurrentBuffer()->findMarks != Buffer::kFmNone) {
+		wEditor.Call(SCI_SETINDICATORCURRENT, kIndicatorMatch);
 		wEditor.Call(SCI_INDICATORCLEARRANGE, 0, LengthDocument());
-		CurrentBuffer()->findMarks = Buffer::fmNone;
+		CurrentBuffer()->findMarks = Buffer::kFmNone;
 	}
 	wEditor.Call(SCI_ANNOTATIONCLEARALL);
 }
@@ -958,13 +958,13 @@ int SciTEBase::SearchFlags(bool regularExpressions) const {
 
 void SciTEBase::MarkAll(MarkPurpose purpose) {
 	RemoveFindMarks();
-	wEditor.Call(SCI_SETINDICATORCURRENT, indicatorMatch);
-	if (purpose == markIncremental) {
-		CurrentBuffer()->findMarks = Buffer::fmTemporary;
-		SetOneIndicator(wEditor, indicatorMatch,
+	wEditor.Call(SCI_SETINDICATORCURRENT, kIndicatorMatch);
+	if (purpose == kMarkIncremental) {
+		CurrentBuffer()->findMarks = Buffer::kFmTemporary;
+		SetOneIndicator(wEditor, kIndicatorMatch,
 			IndicatorDefinition(props.GetString("find.indicator.incremental")));
 	} else {
-		CurrentBuffer()->findMarks = Buffer::fmMarked;
+		CurrentBuffer()->findMarks = Buffer::kFmMarked;
 		std::string findIndicatorString = props.GetString("find.mark.indicator");
 		IndicatorDefinition findIndicator(findIndicatorString);
 		if (!findIndicatorString.length()) {
@@ -975,7 +975,7 @@ void SciTEBase::MarkAll(MarkPurpose purpose) {
 			findIndicator.fillAlpha = alphaIndicator;
 			findIndicator.under = underIndicator;
 		}
-		SetOneIndicator(wEditor, indicatorMatch, findIndicator);
+		SetOneIndicator(wEditor, kIndicatorMatch, findIndicator);
 	}
 
 	const std::string findTarget = UnSlashAsNeeded(EncodeString(findWhat), unSlash, regExp);
@@ -985,7 +985,7 @@ void SciTEBase::MarkAll(MarkPurpose purpose) {
 
 	findMarker.StartMatch(&wEditor, findTarget,
 		SearchFlags(regExp), -1,
-		indicatorMatch, (purpose == markWithBookMarks) ? markerBookmark : -1);
+		kIndicatorMatch, (purpose == kMarkWithBookMarks) ? kMarkerBookmark : -1);
 	SetIdler(true);
 }
 
@@ -997,7 +997,7 @@ int SciTEBase::IncrementSearchMode() {
 void SciTEBase::FailedSaveMessageBox(const FilePath &filePathSaving) {
 	const GUI::gui_string msg = LocaliseMessage(
 		"Could not save file \"^0\".", filePathSaving.AsInternal());
-	WindowMessageBox(wSciTE, msg);
+	WindowMessageBox(wCuteText_, msg);
 }
 
 bool SciTEBase::FindReplaceAdvanced() const {
@@ -1093,13 +1093,13 @@ int SciTEBase::FindNext(bool reverseDirection, bool showWarnings, bool allowRegE
 			endPosition = LengthDocument();
 		}
 		posFind = FindInTarget(findTarget, startPosition, endPosition);
-		WarnUser(warnFindWrapped);
+		WarnUser(kWarnFindWrapped);
 	}
 	if (posFind == -1) {
 		havefound = false;
 		failedfind = true;
 		if (showWarnings) {
-			WarnUser(warnNotFound);
+			WarnUser(kWarnNotFound);
 			FindMessageBox("Can not find the string '^0'.",
 			        &findWhat);
 		}
@@ -1117,7 +1117,7 @@ int SciTEBase::FindNext(bool reverseDirection, bool showWarnings, bool allowRegE
 		wEditor.Call(SCI_SCROLLRANGE, start, end);
 		wEditor.Call(SCI_SETTARGETRANGE, start, end);
 		SetSelection(start, end);
-		if (!replacing && (closeFind != CloseFind::closePrevent)) {
+		if (!replacing && (closeFind != CloseFind::kClosePrevent)) {
 			DestroyFindReplace();
 		}
 	}
@@ -1299,7 +1299,7 @@ int SciTEBase::ReplaceInBuffers() {
 }
 
 void SciTEBase::UIClosed() {
-	if (CurrentBuffer()->findMarks == Buffer::fmTemporary) {
+	if (CurrentBuffer()->findMarks == Buffer::kFmTemporary) {
 		RemoveFindMarks();
 	}
 }
@@ -1415,21 +1415,21 @@ void SciTEBase::BookmarkAdd(int lineno) {
 	if (lineno == -1)
 		lineno = GetCurrentLineNumber();
 	if (!BookmarkPresent(lineno))
-		wEditor.Call(SCI_MARKERADD, lineno, markerBookmark);
+		wEditor.Call(SCI_MARKERADD, lineno, kMarkerBookmark);
 }
 
 void SciTEBase::BookmarkDelete(int lineno) {
 	if (lineno == -1)
 		lineno = GetCurrentLineNumber();
 	if (BookmarkPresent(lineno))
-		wEditor.Call(SCI_MARKERDELETE, lineno, markerBookmark);
+		wEditor.Call(SCI_MARKERDELETE, lineno, kMarkerBookmark);
 }
 
 bool SciTEBase::BookmarkPresent(int lineno) {
 	if (lineno == -1)
 		lineno = GetCurrentLineNumber();
 	const int state = wEditor.Call(SCI_MARKERGET, lineno);
-	return state & (1 << markerBookmark);
+	return state & (1 << kMarkerBookmark);
 }
 
 void SciTEBase::BookmarkToggle(int lineno) {
@@ -1455,11 +1455,11 @@ void SciTEBase::BookmarkNext(bool forwardScan, bool select) {
 		lineRetry = wEditor.Call(SCI_GETLINECOUNT, 0, 0L);	//If not found, try from the end
 		sci_marker = SCI_MARKERPREVIOUS;
 	}
-	int nextLine = wEditor.Call(sci_marker, lineStart, 1 << markerBookmark);
+	int nextLine = wEditor.Call(sci_marker, lineStart, 1 << kMarkerBookmark);
 	if (nextLine < 0)
-		nextLine = wEditor.Call(sci_marker, lineRetry, 1 << markerBookmark);
+		nextLine = wEditor.Call(sci_marker, lineRetry, 1 << kMarkerBookmark);
 	if (nextLine < 0 || nextLine == lineno)	// No bookmark (of the given type) or only one, and already on it
-		WarnUser(warnNoOtherBookmark);
+		WarnUser(kWarnNoOtherBookmark);
 	else {
 		GotoLineEnsureVisible(nextLine);
 		if (select) {
@@ -1471,7 +1471,7 @@ void SciTEBase::BookmarkNext(bool forwardScan, bool select) {
 void SciTEBase::BookmarkSelectAll() {
 	std::vector<int> bookmarks;
 	int lineBookmark = -1;
-	while ((lineBookmark = wEditor.Call(SCI_MARKERNEXT, lineBookmark + 1, 1 << markerBookmark)) >= 0) {
+	while ((lineBookmark = wEditor.Call(SCI_MARKERNEXT, lineBookmark + 1, 1 << kMarkerBookmark)) >= 0) {
 		bookmarks.push_back(lineBookmark);
 	}
 	for (size_t i = 0; i < bookmarks.size(); i++) {
@@ -1492,7 +1492,7 @@ GUI::Rectangle SciTEBase::GetClientRectangle() {
 }
 
 void SciTEBase::Redraw() {
-	wSciTE.InvalidateAll();
+	wCuteText_.InvalidateAll();
 	wEditor.InvalidateAll();
 	wOutput.InvalidateAll();
 }
@@ -1932,7 +1932,7 @@ bool SciTEBase::StartExpandAbbreviation() {
 	}
 
 	if (data.empty()) {
-		WarnUser(warnNotFound);	// No need for a special warning
+		WarnUser(kWarnNotFound);	// No need for a special warning
 		return true; // returning if expanded abbreviation is empty
 	}
 
@@ -2024,7 +2024,7 @@ bool SciTEBase::StartBlockComment() {
 		GUI::gui_string sBase = GUI::StringFromUTF8(base);
 		GUI::gui_string error = LocaliseMessage(
 		            "Block comment variable '^0' is not defined in SciTE *.properties!", sBase.c_str());
-		WindowMessageBox(wSciTE, error);
+		WindowMessageBox(wCuteText_, error);
 		return true;
 	}
 	std::string long_comment = comment;
@@ -2125,7 +2125,7 @@ bool SciTEBase::StartBoxComment() {
 		GUI::gui_string error = LocaliseMessage(
 		            "Box comment variables '^0', '^1' and '^2' are not defined in SciTE *.properties!",
 		            sStart.c_str(), sMiddle.c_str(), sEnd.c_str());
-		WindowMessageBox(wSciTE, error);
+		WindowMessageBox(wCuteText_, error);
 		return true;
 	}
 
@@ -2235,7 +2235,7 @@ bool SciTEBase::StartStreamComment() {
 		GUI::gui_string error = LocaliseMessage(
 		            "Stream comment variables '^0' and '^1' are not defined in SciTE *.properties!",
 		            sStart.c_str(), sEnd.c_str());
-		WindowMessageBox(wSciTE, error);
+		WindowMessageBox(wCuteText_, error);
 		return true;
 	}
 	start_comment += white_space;
@@ -2513,24 +2513,24 @@ static bool includes(const StyleAndWords &symbols, const std::string &value) {
 
 IndentationStatus SciTEBase::GetIndentState(int line) {
 	// C like language indentation defined by braces and keywords
-	IndentationStatus indentState = isNone;
+	IndentationStatus indentState = kIsNone;
 	const std::vector<std::string> controlIndents = GetLinePartsInStyle(line, statementIndent);
 	for (const std::string &sIndent : controlIndents) {
 		if (includes(statementIndent, sIndent))
-			indentState = isKeyWordStart;
+			indentState = kIsKeyWordStart;
 	}
 	const std::vector<std::string> controlEnds = GetLinePartsInStyle(line, statementEnd);
 	for (const std::string &sEnd : controlEnds) {
 		if (includes(statementEnd, sEnd))
-			indentState = isNone;
+			indentState = kIsNone;
 	}
 	// Braces override keywords
 	const std::vector<std::string> controlBlocks = GetLinePartsInStyle(line, blockEnd);
 	for (const std::string &sBlock : controlBlocks) {
 		if (includes(blockEnd, sBlock))
-			indentState = isBlockEnd;
+			indentState = kIsBlockEnd;
 		if (includes(blockStart, sBlock))
-			indentState = isBlockStart;
+			indentState = kIsBlockStart;
 	}
 	return indentState;
 }
@@ -2541,9 +2541,9 @@ int SciTEBase::IndentOfBlock(int line) {
 	const int indentSize = wEditor.Call(SCI_GETINDENT);
 	int indentBlock = GetLineIndentation(line);
 	int backLine = line;
-	IndentationStatus indentState = isNone;
+	IndentationStatus indentState = kIsNone;
 	if (statementIndent.IsEmpty() && blockStart.IsEmpty() && blockEnd.IsEmpty())
-		indentState = isBlockStart;	// Don't bother searching backwards
+		indentState = kIsBlockStart;	// Don't bother searching backwards
 
 	int lineLimit = line - statementLookback;
 	if (lineLimit < 0)
@@ -2552,17 +2552,17 @@ int SciTEBase::IndentOfBlock(int line) {
 		indentState = GetIndentState(backLine);
 		if (indentState != 0) {
 			indentBlock = GetLineIndentation(backLine);
-			if (indentState == isBlockStart) {
+			if (indentState == kIsBlockStart) {
 				if (!indentOpening)
 					indentBlock += indentSize;
 			}
-			if (indentState == isBlockEnd) {
+			if (indentState == kIsBlockEnd) {
 				if (indentClosing)
 					indentBlock -= indentSize;
 				if (indentBlock < 0)
 					indentBlock = 0;
 			}
-			if ((indentState == isKeyWordStart) && (backLine == line))
+			if ((indentState == kIsKeyWordStart) && (backLine == line))
 				indentBlock += indentSize;
 		}
 		backLine--;
@@ -2640,10 +2640,10 @@ void SciTEBase::AutomaticIndentation(char ch) {
 			}
 		}
 	} else if (!blockEnd.IsSingleChar() && (ch == ' ')) {	// Dedent maybe
-		if (!indentClosing && (GetIndentState(curLine) == isBlockEnd)) {}
+		if (!indentClosing && (GetIndentState(curLine) == kIsBlockEnd)) {}
 	} else if (blockStart.IsSingleChar() && (ch == blockStart.words[0])) {
 		// Dedent maybe if first on line and previous line was starting keyword
-		if (!indentOpening && (GetIndentState(curLine - 1) == isKeyWordStart)) {
+		if (!indentOpening && (GetIndentState(curLine - 1) == kIsKeyWordStart)) {
 			if (RangeIsAllWhitespace(thisLineStart, selStart - 1)) {
 				SetLineIndentation(curLine, indentBlock - indentSize);
 			}
@@ -2929,7 +2929,7 @@ void SciTEBase::GoMatchingPreprocCond(int direction, bool select) {
 			SetSelection(mppcMatch, mppcMatch);
 		}
 	} else {
-		WarnUser(warnNotFound);
+		WarnUser(kWarnNotFound);
 	}
 }
 
@@ -3021,7 +3021,7 @@ void SciTEBase::MenuCommand(int cmdID, int source) {
 		WindowSetFocus(wEditor);
 		break;
 	case IDM_CLOSE:
-		if (SaveIfUnsure() != saveCancelled) {
+		if (SaveIfUnsure() != kSaveCancelled) {
 			Close();
 			WindowSetFocus(wEditor);
 		}
@@ -3487,7 +3487,7 @@ void SciTEBase::MenuCommand(int cmdID, int source) {
 		break;
 
 	case IDM_COMPILE: {
-			if (SaveIfUnsureForBuilt() != saveCancelled) {
+			if (SaveIfUnsureForBuilt() != kSaveCancelled) {
 				SelectionIntoProperties();
 				AddCommand(props.GetWild("command.compile.", FileNameExt().AsUTF8().c_str()), "",
 				        SubsystemType("command.compile.subsystem."));
@@ -3498,7 +3498,7 @@ void SciTEBase::MenuCommand(int cmdID, int source) {
 		break;
 
 	case IDM_BUILD: {
-			if (SaveIfUnsureForBuilt() != saveCancelled) {
+			if (SaveIfUnsureForBuilt() != kSaveCancelled) {
 				SelectionIntoProperties();
 				AddCommand(
 				    props.GetWild("command.build.", FileNameExt().AsUTF8().c_str()),
@@ -3513,7 +3513,7 @@ void SciTEBase::MenuCommand(int cmdID, int source) {
 		break;
 
 	case IDM_CLEAN: {
-			if (SaveIfUnsureForBuilt() != saveCancelled) {
+			if (SaveIfUnsureForBuilt() != kSaveCancelled) {
 				SelectionIntoProperties();
 				AddCommand(props.GetWild("command.clean.", FileNameExt().AsUTF8().c_str()), "",
 				        SubsystemType("command.clean.subsystem."));
@@ -3524,7 +3524,7 @@ void SciTEBase::MenuCommand(int cmdID, int source) {
 		break;
 
 	case IDM_GO: {
-			if (SaveIfUnsureForBuilt() != saveCancelled) {
+			if (SaveIfUnsureForBuilt() != kSaveCancelled) {
 				SelectionIntoProperties();
 				int flags = 0;
 
@@ -3611,7 +3611,7 @@ void SciTEBase::MenuCommand(int cmdID, int source) {
 		break;
 
 	case IDM_BOOKMARK_CLEARALL:
-		wEditor.Call(SCI_MARKERDELETEALL, markerBookmark);
+		wEditor.Call(SCI_MARKERDELETEALL, kMarkerBookmark);
 		RemoveFindMarks();
 		break;
 
@@ -3665,17 +3665,17 @@ void SciTEBase::MenuCommand(int cmdID, int source) {
 		break;
 
 	default:
-		if ((cmdID >= bufferCmdID) &&
-		        (cmdID < bufferCmdID + buffers.size())) {
-			SetDocumentAt(cmdID - bufferCmdID);
+		if ((cmdID >= kBufferCmdID) &&
+		        (cmdID < kBufferCmdID + buffers.size())) {
+			SetDocumentAt(cmdID - kBufferCmdID);
 			CheckReload();
-		} else if ((cmdID >= fileStackCmdID) &&
-		        (cmdID < fileStackCmdID + fileStackMax)) {
-			StackMenu(cmdID - fileStackCmdID);
-		} else if (cmdID >= importCmdID &&
-		        (cmdID < importCmdID + importMax)) {
-			ImportMenu(cmdID - importCmdID);
-		} else if (cmdID >= IDM_TOOLS && cmdID < IDM_TOOLS + toolMax) {
+		} else if ((cmdID >= kFileStackCmdID) &&
+		        (cmdID < kFileStackCmdID + kFileStackMax)) {
+			StackMenu(cmdID - kFileStackCmdID);
+		} else if (cmdID >= kImportCmdID &&
+		        (cmdID < kImportCmdID + kImportMax)) {
+			ImportMenu(cmdID - kImportCmdID);
+		} else if (cmdID >= IDM_TOOLS && cmdID < IDM_TOOLS + kToolMax) {
 			ToolsMenu(cmdID - IDM_TOOLS);
 		} else if (cmdID >= IDM_LANGUAGE && cmdID < IDM_LANGUAGE + 100) {
 			SetOverrideLanguage(cmdID - IDM_LANGUAGE);
@@ -3873,11 +3873,11 @@ void SciTEBase::Notify(SCNotification *notification) {
 			// Obly highlight focussed pane.
 			// Manage delay before highlight when no user selection but there is word at the caret.
 			// So the Delay is based on the blinking of caret, scroll...
-			// If currentWordHighlight.statesOfDelay == currentWordHighlight.delay,
+			// If currentWordHighlight.statesOfDelay == currentWordHighlight.kDelay,
 			// then there is word at the caret without selection, and need some delay.
-			if (currentWordHighlight.statesOfDelay == currentWordHighlight.delay) {
+			if (currentWordHighlight.statesOfDelay == currentWordHighlight.kDelay) {
 				if (currentWordHighlight.elapsedTimes.Duration() >= 0.5) {
-					currentWordHighlight.statesOfDelay = currentWordHighlight.delayJustEnded;
+					currentWordHighlight.statesOfDelay = currentWordHighlight.kDelayJustEnded;
 					HighlightCurrentWord(true);
 					pwFocussed->InvalidateAll();
 				}
@@ -3971,23 +3971,23 @@ void SciTEBase::Notify(SCNotification *notification) {
 			}
 			CheckMenusClipboard();
 		}
-		if (CurrentBuffer()->findMarks == Buffer::fmModified) {
+		if (CurrentBuffer()->findMarks == Buffer::kFmModified) {
 			RemoveFindMarks();
 		}
 		if (notification->updated & (SC_UPDATE_SELECTION | SC_UPDATE_CONTENT)) {
 			if ((notification->nmhdr.idFrom == IDM_SRCWIN) == (pwFocussed == &wEditor)) {
 				// Obly highlight focussed pane.
 				if (notification->updated & SC_UPDATE_SELECTION) {
-					currentWordHighlight.statesOfDelay = currentWordHighlight.noDelay; // Selection has just been updated, so delay is disabled.
+					currentWordHighlight.statesOfDelay = currentWordHighlight.kNoDelay; // Selection has just been updated, so delay is disabled.
 					currentWordHighlight.textHasChanged = false;
 					HighlightCurrentWord(true);
 				} else if (currentWordHighlight.textHasChanged) {
 					HighlightCurrentWord(false);
 				}
 				//	if (notification->updated & SC_UPDATE_SELECTION)
-				//if (currentWordHighlight.statesOfDelay != currentWordHighlight.delayJustEnded)
+				//if (currentWordHighlight.statesOfDelay != currentWordHighlight.kDelayJustEnded)
 				//else
-				//	currentWordHighlight.statesOfDelay = currentWordHighlight.delayAlreadyElapsed;
+				//	currentWordHighlight.statesOfDelay = currentWordHighlight.kDelayAlreadyElapsed;
 			}
 		}
 		break;
@@ -4007,8 +4007,8 @@ void SciTEBase::Notify(SCNotification *notification) {
 			//this will be called a lot, and usually means "typing".
 			EnableAMenuItem(IDM_UNDO, true);
 			EnableAMenuItem(IDM_REDO, false);
-			if (CurrentBuffer()->findMarks == Buffer::fmMarked) {
-				CurrentBuffer()->findMarks = Buffer::fmModified;
+			if (CurrentBuffer()->findMarks == Buffer::kFmMarked) {
+				CurrentBuffer()->findMarks = Buffer::kFmModified;
 			}
 		}
 
@@ -4137,7 +4137,7 @@ void SciTEBase::CheckMenus() {
 	EnableAMenuItem(IDM_GO, !jobQueue.IsExecuting() &&
 	        props.GetWild("command.go.", FileNameExt().AsUTF8().c_str()).size() != 0);
 	EnableAMenuItem(IDM_OPENDIRECTORYPROPERTIES, props.GetInt("properties.directory.enable") != 0);
-	for (int toolItem = 0; toolItem < toolMax; toolItem++)
+	for (int toolItem = 0; toolItem < kToolMax; toolItem++)
 		EnableAMenuItem(IDM_TOOLS + toolItem, ToolIsImmediate(toolItem) || !jobQueue.IsExecuting());
 	EnableAMenuItem(IDM_STOPEXECUTE, jobQueue.IsExecuting());
 	if (buffers.size() > 0) {
@@ -4230,14 +4230,14 @@ void SciTEBase::OnTimer() {
 	if (delayBeforeAutoSave && (0 == dialogsOnScreen)) {
 		// First save the visible buffer to avoid any switching if not needed
 		if (CurrentBuffer()->NeedsSave(delayBeforeAutoSave)) {
-			Save(sfNone);
+			Save(kSfNone);
 		}
 		// Then look through the other buffers to save any that need to be saved
 		const int currentBuffer = buffers.Current();
 		for (int i = 0; i < buffers.length; i++) {
 			if (buffers.buffers[i].NeedsSave(delayBeforeAutoSave)) {
 				SetDocumentAt(i);
-				Save(sfNone);
+				Save(kSfNone);
 			}
 		}
 		SetDocumentAt(currentBuffer);
@@ -4305,7 +4305,7 @@ void SciTEBase::PerformOne(char *action) {
 			FilePath dirTarget(GUI::StringFromUTF8(arg));
 			if (!dirTarget.SetWorkingDirectory()) {
 				GUI::gui_string msg = LocaliseMessage("Invalid directory '^0'.", dirTarget.AsInternal());
-				WindowMessageBox(wSciTE, msg);
+				WindowMessageBox(wCuteText_, msg);
 			}
 		} else if (isprefix(action, "enumproperties:")) {
 			EnumProperties(arg);
@@ -4354,7 +4354,7 @@ void SciTEBase::PerformOne(char *action) {
 		} else if (isprefix(action, "menucommand:")) {
 			MenuCommand(atoi(arg));
 		} else if (isprefix(action, "open:")) {
-			Open(GUI::StringFromUTF8(arg), ofSynchronous);
+			Open(GUI::StringFromUTF8(arg), kOfSynchronous);
 		} else if (isprefix(action, "output:") && wOutput.Created()) {
 			wOutput.CallString(SCI_REPLACESEL, 0, arg);
 		} else if (isprefix(action, "property:")) {
@@ -4716,7 +4716,7 @@ bool SciTEBase::ProcessCommandLine(const GUI::gui_string &args, int phase) {
 			}
 
 			if (!PreOpenCheck(arg))
-				Open(arg, static_cast<OpenFlags>(ofQuiet|ofSynchronous));
+				Open(arg, static_cast<OpenFlags>(kOfQuiet|kOfSynchronous));
 		}
 	}
 	if (phase == 1) {

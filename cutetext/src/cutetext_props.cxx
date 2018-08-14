@@ -62,17 +62,17 @@ const GUI::gui_char menuAccessIndicator[] = GUI_TEXT("&");
 #include "IFaceTable.h"
 
 void SciTEBase::SetImportMenu() {
-	for (int i = 0; i < importMax; i++) {
-		DestroyMenuItem(menuOptions, importCmdID + i);
+	for (int i = 0; i < kImportMax; i++) {
+		DestroyMenuItem(kMenuOptions, kImportCmdID + i);
 	}
 	if (!importFiles.empty()) {
-		for (int stackPos = 0; stackPos < static_cast<int>(importFiles.size()) && stackPos < importMax; stackPos++) {
-			const int itemID = importCmdID + stackPos;
+		for (int stackPos = 0; stackPos < static_cast<int>(importFiles.size()) && stackPos < kImportMax; stackPos++) {
+			const int itemID = kImportCmdID + stackPos;
 			if (importFiles[stackPos].IsSet()) {
 				GUI::gui_string entry = localiser.Text("Open");
 				entry += GUI_TEXT(" ");
 				entry += importFiles[stackPos].Name().AsInternal();
-				SetMenuItem(menuOptions, IMPORT_START + stackPos, itemID, entry.c_str());
+				SetMenuItem(kMenuOptions, IMPORT_START + stackPos, itemID, entry.c_str());
 			}
 		}
 	}
@@ -88,10 +88,10 @@ void SciTEBase::ImportMenu(int pos) {
 
 void SciTEBase::SetLanguageMenu() {
 	for (int i = 0; i < 100; i++) {
-		DestroyMenuItem(menuLanguage, languageCmdID + i);
+		DestroyMenuItem(kMenuLanguage, kLanguageCmdID + i);
 	}
 	for (unsigned int item = 0; item < languageMenu.size(); item++) {
-		const int itemID = languageCmdID + item;
+		const int itemID = kLanguageCmdID + item;
 		GUI::gui_string entry = localiser.Text(languageMenu[item].menuItem.c_str());
 		if (languageMenu[item].menuKey.length()) {
 #if defined(GTK)
@@ -102,7 +102,7 @@ void SciTEBase::SetLanguageMenu() {
 			entry += GUI::StringFromUTF8(languageMenu[item].menuKey);
 		}
 		if (entry.size() && entry[0] != '#') {
-			SetMenuItem(menuLanguage, item, itemID, entry.c_str());
+			SetMenuItem(kMenuLanguage, item, itemID, entry.c_str());
 		}
 	}
 }
@@ -1010,13 +1010,13 @@ void SciTEBase::ReadProperties() {
 
 	marginWidth = props.GetInt("margin.width");
 	if (marginWidth == 0)
-		marginWidth = marginWidthDefault;
+		marginWidth = kMarginWidthDefault;
 	wEditor.Call(SCI_SETMARGINWIDTHN, 1, margin ? marginWidth : 0);
 
 	const std::string lineMarginProp = props.GetString("line.margin.width");
 	lineNumbersWidth = atoi(lineMarginProp.c_str());
 	if (lineNumbersWidth == 0)
-		lineNumbersWidth = lineNumbersWidthDefault;
+		lineNumbersWidth = kLineNumbersWidthDefault;
 	lineNumbersExpand = lineMarginProp.find('+') != std::string::npos;
 
 	SetLineNumberWidth();
@@ -1083,9 +1083,9 @@ void SciTEBase::ReadProperties() {
 		PreProcKind ppc;
 	};
 	PropToPPC propToPPC[] = {
-		{"preprocessor.start.", ppcStart},
-		{"preprocessor.middle.", ppcMiddle},
-		{"preprocessor.end.", ppcEnd},
+		{"preprocessor.start.", kPpcStart},
+		{"preprocessor.middle.", kPpcMiddle},
+		{"preprocessor.end.", kPpcEnd},
 	};
 	const std::string ppSymbol = props.GetNewExpandString("preprocessor.symbol.", fileNameForExtension.c_str());
 	preprocessorSymbol = ppSymbol.empty() ? 0 : ppSymbol[0];
@@ -1174,7 +1174,7 @@ void SciTEBase::ReadProperties() {
 
 	foldMarginWidth = props.GetInt("fold.margin.width");
 	if (foldMarginWidth == 0)
-		foldMarginWidth = foldMarginWidthDefault;
+		foldMarginWidth = kFoldMarginWidthDefault;
 	wEditor.Call(SCI_SETMARGINWIDTHN, 2, foldMargin ? foldMarginWidth : 0);
 
 	wEditor.Call(SCI_SETMARGINMASKN, 2, SC_MASK_FOLDERS);
@@ -1300,21 +1300,21 @@ void SciTEBase::ReadProperties() {
 		break;
 	}
 
-	wEditor.Call(SCI_MARKERSETFORE, markerBookmark,
+	wEditor.Call(SCI_MARKERSETFORE, kMarkerBookmark,
 		ColourOfProperty(props, "bookmark.fore", ColourRGB(0xbe, 0, 0)));
-	wEditor.Call(SCI_MARKERSETBACK, markerBookmark,
+	wEditor.Call(SCI_MARKERSETBACK, kMarkerBookmark,
 		ColourOfProperty(props, "bookmark.back", ColourRGB(0xe2, 0x40, 0x40)));
-	wEditor.Call(SCI_MARKERSETALPHA, markerBookmark,
+	wEditor.Call(SCI_MARKERSETALPHA, kMarkerBookmark,
 		props.GetInt("bookmark.alpha", SC_ALPHA_NOALPHA));
 	const std::string bookMarkXPM = props.GetString("bookmark.pixmap");
 	if (bookMarkXPM.length()) {
-		wEditor.CallString(SCI_MARKERDEFINEPIXMAP, markerBookmark,
+		wEditor.CallString(SCI_MARKERDEFINEPIXMAP, kMarkerBookmark,
 			bookMarkXPM.c_str());
 	} else if (props.GetString("bookmark.fore").length()) {
-		wEditor.Call(SCI_MARKERDEFINE, markerBookmark, props.GetInt("bookmark.symbol", SC_MARK_BOOKMARK));
+		wEditor.Call(SCI_MARKERDEFINE, kMarkerBookmark, props.GetInt("bookmark.symbol", SC_MARK_BOOKMARK));
 	} else {
 		// No bookmark.fore setting so display default pixmap.
-		wEditor.CallPointer(SCI_MARKERDEFINEPIXMAP, markerBookmark, bookmarkBluegem);
+		wEditor.CallPointer(SCI_MARKERDEFINEPIXMAP, kMarkerBookmark, bookmarkBluegem);
 	}
 
 	wEditor.Call(SCI_SETSCROLLWIDTH, props.GetInt("horizontal.scroll.width", 2000));
@@ -1330,11 +1330,11 @@ void SciTEBase::ReadProperties() {
 	wEditor.Call(SCI_SETCARETSTICKY, props.GetInt("caret.sticky", 0));
 
 	// Clear all previous indicators.
-	wEditor.Call(SCI_SETINDICATORCURRENT, indicatorHighlightCurrentWord);
+	wEditor.Call(SCI_SETINDICATORCURRENT, kIndicatorHighlightCurrentWord);
 	wEditor.Call(SCI_INDICATORCLEARRANGE, 0, wEditor.Call(SCI_GETLENGTH));
-	wOutput.Call(SCI_SETINDICATORCURRENT, indicatorHighlightCurrentWord);
+	wOutput.Call(SCI_SETINDICATORCURRENT, kIndicatorHighlightCurrentWord);
 	wOutput.Call(SCI_INDICATORCLEARRANGE, 0, wOutput.Call(SCI_GETLENGTH));
-	currentWordHighlight.statesOfDelay = currentWordHighlight.noDelay;
+	currentWordHighlight.statesOfDelay = currentWordHighlight.kNoDelay;
 
 	currentWordHighlight.isEnabled = props.GetInt("highlight.current.word", 0) == 1;
 	if (currentWordHighlight.isEnabled) {
@@ -1351,8 +1351,8 @@ void SciTEBase::ReadProperties() {
 			highlightCurrentWordIndicator.fillAlpha = alphaIndicator;
 			highlightCurrentWordIndicator.under = underIndicator;
 		}
-		SetOneIndicator(wEditor, indicatorHighlightCurrentWord, highlightCurrentWordIndicator);
-		SetOneIndicator(wOutput, indicatorHighlightCurrentWord, highlightCurrentWordIndicator);
+		SetOneIndicator(wEditor, kIndicatorHighlightCurrentWord, highlightCurrentWordIndicator);
+		SetOneIndicator(wOutput, kIndicatorHighlightCurrentWord, highlightCurrentWordIndicator);
 		currentWordHighlight.isOnlyWithSameStyle = props.GetInt("highlight.current.word.by.style", 0) == 1;
 		HighlightCurrentWord(true);
 	}
@@ -1421,9 +1421,9 @@ void SciTEBase::ReadProperties() {
 
 	delayBeforeAutoSave = props.GetInt("save.on.timer");
 	if (delayBeforeAutoSave) {
-		TimerStart(timerAutoSave);
+		TimerStart(kTimerAutoSave);
 	} else {
-		TimerEnd(timerAutoSave);
+		TimerEnd(kTimerAutoSave);
 	}
 
 	firstPropertiesRead = false;
@@ -1471,8 +1471,8 @@ void SciTEBase::ReadFontProperties() {
 	SetStyleFor(wEditor, languageName);
 	if (props.GetInt("error.inline")) {
 		wEditor.Call(SCI_RELEASEALLEXTENDEDSTYLES, 0, 0);
-		diagnosticStyleStart = wEditor.Call(SCI_ALLOCATEEXTENDEDSTYLES, diagnosticStyles, 0);
-		SetStyleBlock(wEditor, "error", diagnosticStyleStart, diagnosticStyleStart+diagnosticStyles-1);
+		diagnosticStyleStart = wEditor.Call(SCI_ALLOCATEEXTENDEDSTYLES, kDiagnosticStyles, 0);
+		SetStyleBlock(wEditor, "error", diagnosticStyleStart, diagnosticStyleStart+kDiagnosticStyles-1);
 	}
 
 	const int diffToSecondary = static_cast<int>(wEditor.Call(SCI_DISTANCETOSECONDARYSTYLES));
@@ -1490,7 +1490,7 @@ void SciTEBase::ReadFontProperties() {
 	}
 
 	// Turn grey while loading
-	if (CurrentBuffer()->lifeState == Buffer::reading)
+	if (CurrentBuffer()->lifeState == Buffer::kReading)
 		wEditor.Call(SCI_STYLESETBACK, STYLE_DEFAULT, 0xEEEEEE);
 
 	wOutput.Call(SCI_STYLECLEARALL, 0, 0);
@@ -1533,7 +1533,7 @@ void SciTEBase::SetPropertiesInitial() {
 	tabMultiLine = props.GetInt("tabbar.multiline");
 	lineNumbers = props.GetInt("line.margin.visible");
 	margin = props.GetInt("margin.width");
-	foldMargin = props.GetInt("fold.margin.width", foldMarginWidthDefault);
+	foldMargin = props.GetInt("fold.margin.width", kFoldMarginWidthDefault);
 
 	matchCase = props.GetInt("find.replace.matchcase");
 	regExp = props.GetInt("find.replace.regexp");
@@ -1711,31 +1711,31 @@ void SciTEBase::OpenProperties(int propsFile) {
 	switch (propsFile) {
 	case IDM_OPENLOCALPROPERTIES:
 		propfile = GetLocalPropertiesFileName();
-		Open(propfile, ofQuiet);
+		Open(propfile, kOfQuiet);
 		break;
 	case IDM_OPENUSERPROPERTIES:
 		propfile = GetUserPropertiesFileName();
-		Open(propfile, ofQuiet);
+		Open(propfile, kOfQuiet);
 		break;
 	case IDM_OPENABBREVPROPERTIES:
 		propfile = pathAbbreviations;
-		Open(propfile, ofQuiet);
+		Open(propfile, kOfQuiet);
 		break;
 	case IDM_OPENGLOBALPROPERTIES:
 		propfile = GetDefaultPropertiesFileName();
-		Open(propfile, ofQuiet);
+		Open(propfile, kOfQuiet);
 		break;
 	case IDM_OPENLUAEXTERNALFILE: {
 			GUI::gui_string extlua = GUI::StringFromUTF8(props.GetExpandedString("ext.lua.startup.script"));
 			if (extlua.length()) {
-				Open(extlua.c_str(), ofQuiet);
+				Open(extlua.c_str(), kOfQuiet);
 			}
 			break;
 		}
 	case IDM_OPENDIRECTORYPROPERTIES: {
 			propfile = GetDirectoryPropertiesFileName();
 			const bool alreadyExists = propfile.Exists();
-			Open(propfile, ofQuiet);
+			Open(propfile, kOfQuiet);
 			if (!alreadyExists)
 				SaveAsDialog();
 		}

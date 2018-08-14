@@ -253,7 +253,7 @@ void SciTEBase::OpenCurrentFile(long long fileSize, bool suppressMessage, bool a
 		// Already performing an asynchronous load or save so do not restart load
 		if (!suppressMessage) {
 			GUI::gui_string msg = LocaliseMessage("Could not open file '^0'.", filePath.AsInternal());
-			WindowMessageBox(wSciTE, msg);
+			WindowMessageBox(wCuteText_, msg);
 		}
 		return;
 	}
@@ -262,7 +262,7 @@ void SciTEBase::OpenCurrentFile(long long fileSize, bool suppressMessage, bool a
 	if (!fp) {
 		if (!suppressMessage) {
 			GUI::gui_string msg = LocaliseMessage("Could not open file '^0'.", filePath.AsInternal());
-			WindowMessageBox(wSciTE, msg);
+			WindowMessageBox(wCuteText_, msg);
 		}
 		if (!wEditor.Call(SCI_GETUNDOCOLLECTION)) {
 			wEditor.Call(SCI_SETUNDOCOLLECTION, 1);
@@ -275,7 +275,7 @@ void SciTEBase::OpenCurrentFile(long long fileSize, bool suppressMessage, bool a
 	wEditor.Call(SCI_BEGINUNDOACTION);	// Group together clear and insert
 	wEditor.Call(SCI_CLEARALL);
 
-	CurrentBuffer()->lifeState = Buffer::reading;
+	CurrentBuffer()->lifeState = Buffer::kReading;
 	if (asynchronous) {
 		// Turn grey while loading
 		wEditor.Call(SCI_STYLESETBACK, STYLE_DEFAULT, 0xEEEEEE);
@@ -334,7 +334,7 @@ void SciTEBase::OpenCurrentFile(long long fileSize, bool suppressMessage, bool a
 			CurrentBuffer()->unicodeMode = umCodingCookie;
 		}
 
-		CompleteOpen(ocSynchronous);
+		CompleteOpen(kOcSynchronous);
 	}
 }
 
@@ -344,19 +344,19 @@ void SciTEBase::TextRead(FileWorker *pFileWorker) {
 	// May not be found if load cancelled
 	if (iBuffer >= 0) {
 		buffers.buffers[iBuffer].unicodeMode = pFileLoader->unicodeMode;
-		buffers.buffers[iBuffer].lifeState = Buffer::readAll;
+		buffers.buffers[iBuffer].lifeState = Buffer::kReadAll;
 		if (pFileLoader->err) {
 			GUI::gui_string msg = LocaliseMessage("Could not open file '^0'.", pFileLoader->path.AsInternal());
-			WindowMessageBox(wSciTE, msg);
+			WindowMessageBox(wCuteText_, msg);
 			// Should refuse to save when failure occurs
-			buffers.buffers[iBuffer].lifeState = Buffer::empty;
+			buffers.buffers[iBuffer].lifeState = Buffer::kEmpty;
 		}
 		// Switch documents
 		const sptr_t pdocLoading = reinterpret_cast<sptr_t>(pFileLoader->pLoader->ConvertToDocument());
 		pFileLoader->pLoader = 0;
 		SwitchDocumentAt(iBuffer, pdocLoading);
 		if (iBuffer == buffers.Current()) {
-			CompleteOpen(ocCompleteCurrent);
+			CompleteOpen(kOcCompleteCurrent);
 			if (extender)
 				extender->OnOpen(buffers.buffers[iBuffer].file.AsUTF8().c_str());
 			RestoreState(buffers.buffers[iBuffer], true);
@@ -367,17 +367,17 @@ void SciTEBase::TextRead(FileWorker *pFileWorker) {
 }
 
 void SciTEBase::PerformDeferredTasks() {
-	if (buffers.buffers[buffers.Current()].futureDo & Buffer::fdFinishSave) {
+	if (buffers.buffers[buffers.Current()].futureDo & Buffer::kFdFinishSave) {
 		wEditor.Call(SCI_SETSAVEPOINT);
 		wEditor.Call(SCI_SETREADONLY, CurrentBuffer()->isReadOnly);
-		buffers.FinishedFuture(buffers.Current(), Buffer::fdFinishSave);
+		buffers.FinishedFuture(buffers.Current(), Buffer::kFdFinishSave);
 	}
 }
 
 void SciTEBase::CompleteOpen(OpenCompletion oc) {
 	wEditor.Call(SCI_SETREADONLY, CurrentBuffer()->isReadOnly);
 
-	if (oc != ocSynchronous) {
+	if (oc != kOcSynchronous) {
 		ReadProperties();
 	}
 
@@ -385,13 +385,13 @@ void SciTEBase::CompleteOpen(OpenCompletion oc) {
 		std::string languageOverride = DiscoverLanguage();
 		if (languageOverride.length()) {
 			CurrentBuffer()->overrideExtension = languageOverride;
-			CurrentBuffer()->lifeState = Buffer::open;
+			CurrentBuffer()->lifeState = Buffer::kOpen;
 			ReadProperties();
 			SetIndentSettings();
 		}
 	}
 
-	if (oc != ocSynchronous) {
+	if (oc != kOcSynchronous) {
 		SetIndentSettings();
 		SetEol();
 		UpdateBuffersCurrent();
@@ -461,13 +461,13 @@ void SciTEBase::TextWritten(FileWorker *pFileWorker) {
 				buffers.buffers[iBuffer].isDirty = false;
 				buffers.buffers[iBuffer].failedSave = false;
 				// Need to make writable and set save point when next receive focus.
-				buffers.AddFuture(iBuffer, Buffer::fdFinishSave);
+				buffers.AddFuture(iBuffer, Buffer::kFdFinishSave);
 				SetBuffersMenu();
 			}
 		}
 	} else {
 		GUI::gui_string msg = LocaliseMessage("Could not find buffer '^0'.", pathSaved.AsInternal());
-		WindowMessageBox(wSciTE, msg);
+		WindowMessageBox(wCuteText_, msg);
 	}
 
 	if (errSaved) {
@@ -520,7 +520,7 @@ bool SciTEBase::Open(const FilePath &file, OpenFlags of) {
 	if (!absPath.IsUntitled() && absPath.IsDirectory()) {
 		GUI::gui_string msg = LocaliseMessage("Path '^0' is a directory so can not be opened.",
 			absPath.AsInternal());
-		WindowMessageBox(wSciTE, msg);
+		WindowMessageBox(wCuteText_, msg);
 		return false;
 	}
 
@@ -532,11 +532,11 @@ bool SciTEBase::Open(const FilePath &file, OpenFlags of) {
 		DeleteFileStackMenu();
 		SetFileStackMenu();
 		// If not forcing reload or currently busy with load or save, just rotate into view
-		if ((!(of & ofForceLoad)) || (CurrentBufferConst()->pFileWorker))
+		if ((!(of & kOfForceLoad)) || (CurrentBufferConst()->pFileWorker))
 			return true;
 	}
 	// See if we can have a buffer for the file to open
-	if (!CanMakeRoom(!(of & ofNoSaveIfDirty))) {
+	if (!CanMakeRoom(!(of & kOfNoSaveIfDirty))) {
 		return false;
 	}
 
@@ -546,7 +546,7 @@ bool SciTEBase::Open(const FilePath &file, OpenFlags of) {
 		const GUI::gui_string msg = LocaliseMessage("File '^0' is ^1 bytes long, "
 			"larger than 2GB which is the largest SciTE can open.",
 			absPath.AsInternal(), sSize.c_str());
-		WindowMessageBox(wSciTE, msg, mbsIconWarning);
+		WindowMessageBox(wCuteText_, msg, mbsIconWarning);
 		return false;
 	}
 	if (fileSize > 0) {
@@ -559,7 +559,7 @@ bool SciTEBase::Open(const FilePath &file, OpenFlags of) {
 			        "larger than the ^2 bytes limit set in the properties.\n"
 			        "Do you still want to open it?",
 			        absPath.AsInternal(), sSize.c_str(), sMaxSize.c_str());
-			const MessageBoxChoice answer = WindowMessageBox(wSciTE, msg, mbsYesNo | mbsIconWarning);
+			const MessageBoxChoice answer = WindowMessageBox(wCuteText_, msg, mbsYesNo | mbsIconWarning);
 			if (answer != mbYes) {
 				return false;
 			}
@@ -569,11 +569,11 @@ bool SciTEBase::Open(const FilePath &file, OpenFlags of) {
 	if (buffers.size() == buffers.length) {
 		AddFileToStack(RecentFile(filePath, GetSelectedRange(), GetCurrentScrollPosition()));
 		ClearDocument();
-		CurrentBuffer()->lifeState = Buffer::open;
+		CurrentBuffer()->lifeState = Buffer::kOpen;
 		if (extender)
 			extender->InitBuffer(buffers.Current());
 	} else {
-		if (index < 0 || !(of & ofForceLoad)) { // No new buffer, already opened
+		if (index < 0 || !(of & kOfForceLoad)) { // No new buffer, already opened
 			New();
 		}
 	}
@@ -603,17 +603,17 @@ bool SciTEBase::Open(const FilePath &file, OpenFlags of) {
 	if (!filePath.IsUntitled()) {
 		wEditor.Call(SCI_SETREADONLY, 0);
 		wEditor.Call(SCI_CANCEL);
-		if (of & ofPreserveUndo) {
+		if (of & kOfPreserveUndo) {
 			wEditor.Call(SCI_BEGINUNDOACTION);
 		} else {
 			wEditor.Call(SCI_SETUNDOCOLLECTION, 0);
 		}
 
 		asynchronous = (fileSize > props.GetInt("background.open.size", -1)) &&
-			!(of & (ofPreserveUndo|ofSynchronous));
-		OpenCurrentFile(fileSize, of & ofQuiet, asynchronous);
+			!(of & (kOfPreserveUndo|kOfSynchronous));
+		OpenCurrentFile(fileSize, of & kOfQuiet, asynchronous);
 
-		if (of & ofPreserveUndo) {
+		if (of & kOfPreserveUndo) {
 			wEditor.Call(SCI_ENDUNDOACTION);
 		} else {
 			wEditor.Call(SCI_EMPTYUNDOBUFFER);
@@ -637,7 +637,7 @@ bool SciTEBase::Open(const FilePath &file, OpenFlags of) {
 bool SciTEBase::OpenSelected() {
 	std::string selName = SelectionFilename();
 	if (selName.length() == 0) {
-		WarnUser(warnWrongFile);
+		WarnUser(kWarnWrongFile);
 		return false;	// No selection
 	}
 
@@ -666,7 +666,7 @@ bool SciTEBase::OpenSelected() {
 	selName += openSuffix;
 
 	if (EqualCaseInsensitive(selName.c_str(), FileNameExt().AsUTF8().c_str()) || EqualCaseInsensitive(selName.c_str(), filePath.AsUTF8().c_str())) {
-		WarnUser(warnWrongFile);
+		WarnUser(kWarnWrongFile);
 		return true;	// Do not open if it is the current file!
 	}
 
@@ -733,7 +733,7 @@ bool SciTEBase::OpenSelected() {
 	FilePath pathReturned;
 	if (Exists(path.AsInternal(), selFN.c_str(), &pathReturned)) {
 		// Open synchronously if want to seek line number or search tag
-		const OpenFlags of = ((lineNumber > 0) || (cTag.length() != 0)) ? ofSynchronous : ofNone;
+		const OpenFlags of = ((lineNumber > 0) || (cTag.length() != 0)) ? kOfSynchronous : kOfNone;
 		if (Open(pathReturned, of)) {
 			if (lineNumber > 0) {
 				wEditor.Call(SCI_GOTOLINE, lineNumber - 1);
@@ -748,7 +748,7 @@ bool SciTEBase::OpenSelected() {
 			return true;
 		}
 	} else {
-		WarnUser(warnWrongFile);
+		WarnUser(kWarnWrongFile);
 	}
 	return false;
 }
@@ -769,7 +769,7 @@ void SciTEBase::CheckReload() {
 		const time_t newModTime = filePath.ModifiedTime();
 		if ((newModTime != 0) && (newModTime != CurrentBuffer()->fileModTime)) {
 			RecentFile rf = GetFilePosition();
-			const OpenFlags of = props.GetInt("reload.preserves.undo") ? ofPreserveUndo : ofNone;
+			const OpenFlags of = props.GetInt("reload.preserves.undo") ? kOfPreserveUndo : kOfNone;
 			if (CurrentBuffer()->isDirty || props.GetInt("are.you.sure.on.reload") != 0) {
 				if ((0 == dialogsOnScreen) && (newModTime != CurrentBuffer()->fileModLastAsk)) {
 					GUI::gui_string msg;
@@ -782,15 +782,15 @@ void SciTEBase::CheckReload() {
 						          "The file '^0' has been modified outside SciTE. Should it be reloaded?",
 						          FileNameExt().AsInternal());
 					}
-					const MessageBoxChoice decision = WindowMessageBox(wSciTE, msg, mbsYesNo | mbsIconQuestion);
+					const MessageBoxChoice decision = WindowMessageBox(wCuteText_, msg, mbsYesNo | mbsIconQuestion);
 					if (decision == mbYes) {
-						Open(filePath, static_cast<OpenFlags>(of | ofForceLoad));
+						Open(filePath, static_cast<OpenFlags>(of | kOfForceLoad));
 						DisplayAround(rf);
 					}
 					CurrentBuffer()->fileModLastAsk = newModTime;
 				}
 			} else {
-				Open(filePath, static_cast<OpenFlags>(of | ofForceLoad));
+				Open(filePath, static_cast<OpenFlags>(of | kOfForceLoad));
 				DisplayAround(rf);
 			}
 		}  else if (newModTime == 0 && CurrentBuffer()->fileModTime != 0)  {
@@ -804,7 +804,7 @@ void SciTEBase::CheckReload() {
 			GUI::gui_string msg = LocaliseMessage(
 						      "The file '^0' has been deleted.",
 						      filePath.AsInternal());
-			WindowMessageBox(wSciTE, msg, mbsOK);
+			WindowMessageBox(wCuteText_, msg, mbsOK);
 		}
 	}
 }
@@ -845,9 +845,9 @@ SciTEBase::SaveResult SciTEBase::SaveIfUnsure(bool forceQuestion, SaveFlags sf) 
 	if (CurrentBuffer()->pFileWorker) {
 		if (CurrentBuffer()->pFileWorker->IsLoading())
 			// In semi-loaded state so refuse to save
-			return saveCancelled;
+			return kSaveCancelled;
 		else
-			return saveCompleted;
+			return kSaveCompleted;
 	}
 	if ((CurrentBuffer()->isDirty) && (LengthDocument() || !filePath.IsUntitled() || forceQuestion)) {
 		if (props.GetInt("are.you.sure", 1) ||
@@ -859,23 +859,23 @@ SciTEBase::SaveResult SciTEBase::SaveIfUnsure(bool forceQuestion, SaveFlags sf) 
 			} else {
 				msg = LocaliseMessage("Save changes to (Untitled)?");
 			}
-			const MessageBoxChoice decision = WindowMessageBox(wSciTE, msg, mbsYesNoCancel | mbsIconQuestion);
+			const MessageBoxChoice decision = WindowMessageBox(wCuteText_, msg, mbsYesNoCancel | mbsIconQuestion);
 			if (decision == mbYes) {
 				if (!Save(sf))
-					return saveCancelled;
+					return kSaveCancelled;
 			}
-			return (decision == mbCancel) ? saveCancelled : saveCompleted;
+			return (decision == mbCancel) ? kSaveCancelled : kSaveCompleted;
 		} else {
 			if (!Save(sf))
-				return saveCancelled;
+				return kSaveCancelled;
 		}
 	}
-	return saveCompleted;
+	return kSaveCompleted;
 }
 
 SciTEBase::SaveResult SciTEBase::SaveIfUnsureAll() {
-	if (SaveAllBuffers(false) == saveCancelled) {
-		return saveCancelled;
+	if (SaveAllBuffers(false) == kSaveCancelled) {
+		return kSaveCancelled;
 	}
 	if (props.GetInt("save.recent")) {
 		for (int i = 0; i < buffers.lengthVisible; ++i) {
@@ -908,7 +908,7 @@ SciTEBase::SaveResult SciTEBase::SaveIfUnsureAll() {
 		}
 	}
 	// Initial document will be deleted when editor deleted
-	return saveCompleted;
+	return kSaveCompleted;
 }
 
 SciTEBase::SaveResult SciTEBase::SaveIfUnsureForBuilt() {
@@ -921,7 +921,7 @@ SciTEBase::SaveResult SciTEBase::SaveIfUnsureForBuilt() {
 
 		Save();
 	}
-	return saveCompleted;
+	return kSaveCompleted;
 }
 /**
 	Selection saver and restorer.
@@ -1091,16 +1091,16 @@ bool SciTEBase::SaveBuffer(const FilePath &saveName, SaveFlags sf) {
 		FILE *fp = saveName.Open(fileWrite);
 		if (fp) {
 			const size_t lengthDoc = LengthDocument();
-			if (!(sf & sfSynchronous)) {
+			if (!(sf & kSfSynchronous)) {
 				wEditor.Call(SCI_SETREADONLY, 1);
 				const char *documentBytes = reinterpret_cast<const char *>(wEditor.CallReturnPointer(SCI_GETCHARACTERPOINTER));
-				CurrentBuffer()->pFileWorker = new FileStorer(this, documentBytes, saveName, lengthDoc, fp, CurrentBuffer()->unicodeMode, (sf & sfProgressVisible));
+				CurrentBuffer()->pFileWorker = new FileStorer(this, documentBytes, saveName, lengthDoc, fp, CurrentBuffer()->unicodeMode, (sf & kSfProgressVisible));
 				CurrentBuffer()->pFileWorker->sleepTime = props.GetInt("asynchronous.sleep");
 				if (PerformOnNewThread(CurrentBuffer()->pFileWorker)) {
 					retVal = true;
 				} else {
 					GUI::gui_string msg = LocaliseMessage("Failed to save file '^0' as thread could not be started.", saveName.AsInternal());
-					WindowMessageBox(wSciTE, msg);
+					WindowMessageBox(wCuteText_, msg);
 				}
 			} else {
 				Utf8_16_Write convert;
@@ -1132,7 +1132,7 @@ bool SciTEBase::SaveBuffer(const FilePath &saveName, SaveFlags sf) {
 		}
 	}
 
-	if (retVal && extender && (sf & sfSynchronous)) {
+	if (retVal && extender && (sf & kSfSynchronous)) {
 		extender->OnSave(saveName.AsUTF8().c_str());
 	}
 	UpdateStatusBar(true);
@@ -1158,7 +1158,7 @@ bool SciTEBase::Save(SaveFlags sf) {
 			msg = LocaliseMessage(
 				"The file '^0' has not yet been loaded entirely, so it can not be saved right now. Please retry in a while.",
 				filePath.AsInternal());
-			WindowMessageBox(wSciTE, msg);
+			WindowMessageBox(wCuteText_, msg);
 			// It is OK to not save this file
 			return true;
 		}
@@ -1167,7 +1167,7 @@ bool SciTEBase::Save(SaveFlags sf) {
 			msg = LocaliseMessage(
 				"The file '^0' is already being saved.",
 				filePath.AsInternal());
-			WindowMessageBox(wSciTE, msg);
+			WindowMessageBox(wCuteText_, msg);
 			// It is OK to not save this file
 			return true;
 		}
@@ -1180,7 +1180,7 @@ bool SciTEBase::Save(SaveFlags sf) {
 				(newModTime != CurrentBuffer()->fileModTime)) {
 				msg = LocaliseMessage("The file '^0' has been modified outside SciTE. Should it be saved?",
 					filePath.AsInternal());
-				const MessageBoxChoice decision = WindowMessageBox(wSciTE, msg, mbsYesNo | mbsIconQuestion);
+				const MessageBoxChoice decision = WindowMessageBox(wCuteText_, msg, mbsYesNo | mbsIconQuestion);
 				if (decision == mbNo) {
 					return false;
 				}
@@ -1189,10 +1189,10 @@ bool SciTEBase::Save(SaveFlags sf) {
 
 		if ((LengthDocument() <= props.GetInt("background.save.size", -1)) ||
 			(buffers.SingleBuffer()))
-			sf = static_cast<SaveFlags>(sf | sfSynchronous);
+			sf = static_cast<SaveFlags>(sf | kSfSynchronous);
 		if (SaveBuffer(filePath, sf)) {
 			CurrentBuffer()->SetTimeFromFile();
-			if (sf & sfSynchronous) {
+			if (sf & kSfSynchronous) {
 				wEditor.Call(SCI_SETSAVEPOINT);
 				if (IsPropertiesFile(filePath)) {
 					ReloadProperties();
@@ -1203,7 +1203,7 @@ bool SciTEBase::Save(SaveFlags sf) {
 				CurrentBuffer()->failedSave = true;
 				msg = LocaliseMessage(
 					"Could not save file '^0'. Save under a different name?", filePath.AsInternal());
-				const MessageBoxChoice decision = WindowMessageBox(wSciTE, msg, mbsYesNo | mbsIconWarning);
+				const MessageBoxChoice decision = WindowMessageBox(wCuteText_, msg, mbsYesNo | mbsIconWarning);
 				if (decision == mbYes) {
 					return SaveAsDialog();
 				}
@@ -1252,7 +1252,7 @@ bool SciTEBase::SaveIfNotOpen(const FilePath &destFile, bool fixCase) {
 	if (index >= 0) {
 		GUI::gui_string msg = LocaliseMessage(
 			    "File '^0' is already open in another buffer.", destFile.AsInternal());
-		WindowMessageBox(wSciTE, msg);
+		WindowMessageBox(wCuteText_, msg);
 		return false;
 	} else {
 		SaveAs(absPath.AsInternal(), fixCase);
@@ -1345,7 +1345,7 @@ void SciTEBase::OpenFilesFromStdin() {
 		char *pNL;
 		if ((pNL = strchr(data, '\n')) != NULL)
 			* pNL = '\0';
-		Open(GUI::StringFromUTF8(data).c_str(), ofQuiet);
+		Open(GUI::StringFromUTF8(data).c_str(), kOfQuiet);
 	}
 	if (buffers.lengthVisible == 0)
 		Open(GUI_TEXT(""));

@@ -412,10 +412,10 @@ void SciTEBase::SetDocumentAt(int index, bool updateStack) {
 	propsDiscovered = bufferNext.props;
 	propsDiscovered.superPS = &propsLocal;
 	wEditor.Call(SCI_SETDOCPOINTER, 0, GetDocumentAt(buffers.Current()));
-	const bool restoreBookmarks = bufferNext.lifeState == Buffer::readAll;
+	const bool restoreBookmarks = bufferNext.lifeState == Buffer::kReadAll;
 	PerformDeferredTasks();
-	if (bufferNext.lifeState == Buffer::readAll) {
-		CompleteOpen(ocCompleteSwitch);
+	if (bufferNext.lifeState == Buffer::kReadAll) {
+		CompleteOpen(kOcCompleteSwitch);
 		if (extender)
 			extender->OnOpen(filePath.AsUTF8().c_str());
 	}
@@ -448,7 +448,7 @@ void SciTEBase::UpdateBuffersCurrent() {
 	if ((buffers.length > 0) && (currentbuf >= 0) && (buffers.GetVisible(currentbuf))) {
 		Buffer &bufferCurrent = buffers.buffers[currentbuf];
 		bufferCurrent.file.Set(filePath);
-		if (bufferCurrent.lifeState != Buffer::reading && bufferCurrent.lifeState != Buffer::readAll) {
+		if (bufferCurrent.lifeState != Buffer::kReading && bufferCurrent.lifeState != Buffer::kReadAll) {
 			bufferCurrent.file.selection.position = wEditor.Call(SCI_GETCURRENTPOS);
 			bufferCurrent.file.selection.anchor = wEditor.Call(SCI_GETANCHOR);
 			bufferCurrent.file.scrollPosition = GetCurrentScrollPosition();
@@ -471,7 +471,7 @@ void SciTEBase::UpdateBuffersCurrent() {
 			if (props.GetInt("session.bookmarks")) {
 				buffers.buffers[buffers.Current()].bookmarks.clear();
 				int lineBookmark = -1;
-				while ((lineBookmark = wEditor.Call(SCI_MARKERNEXT, lineBookmark + 1, 1 << markerBookmark)) >= 0) {
+				while ((lineBookmark = wEditor.Call(SCI_MARKERNEXT, lineBookmark + 1, 1 << kMarkerBookmark)) >= 0) {
 					bufferCurrent.bookmarks.push_back(lineBookmark);
 				}
 			}
@@ -488,7 +488,7 @@ bool SciTEBase::CanMakeRoom(bool maySaveIfDirty) {
 		return true;
 	} else if (maySaveIfDirty) {
 		// All available buffers are taken, try and close the current one
-		if (SaveIfUnsure(true, static_cast<SaveFlags>(sfProgressVisible | sfSynchronous)) != saveCancelled) {
+		if (SaveIfUnsure(true, static_cast<SaveFlags>(kSfProgressVisible | kSfSynchronous)) != kSaveCancelled) {
 			// The file isn't dirty, or the user agreed to close the current one
 			return true;
 		}
@@ -510,8 +510,8 @@ void SciTEBase::ClearDocument() {
 
 void SciTEBase::CreateBuffers() {
 	int buffersWanted = props.GetInt("buffers");
-	if (buffersWanted > bufferMax) {
-		buffersWanted = bufferMax;
+	if (buffersWanted > kBufferMax) {
+		buffersWanted = kBufferMax;
 	}
 	if (buffersWanted < 1) {
 		buffersWanted = 1;
@@ -527,9 +527,9 @@ void SciTEBase::InitialiseBuffers() {
 		wEditor.Call(SCI_ADDREFDOCUMENT, 0, buffers.buffers[0].doc); // We own this reference
 		if (buffers.size() == 1) {
 			// Single buffer mode, delete the Buffers main menu entry
-			DestroyMenuItem(menuBuffers, 0);
+			DestroyMenuItem(kMenuBuffers, 0);
 			// Destroy command "View Tab Bar" in the menu "View"
-			DestroyMenuItem(menuView, IDM_VIEWTABBAR);
+			DestroyMenuItem(kMenuView, IDM_VIEWTABBAR);
 			// Make previous change visible.
 			RedrawMenu();
 		}
@@ -574,7 +574,7 @@ void SciTEBase::RestoreRecentMenu() {
 
 	DeleteFileStackMenu();
 
-	for (int i = 0; i < fileStackMax; i++) {
+	for (int i = 0; i < kFileStackMax; i++) {
 		std::string propKey = IndexPropKey("mru", i, "path");
 		std::string propStr = propsSession.GetString(propKey.c_str());
 		if (propStr == "")
@@ -649,7 +649,7 @@ void SciTEBase::RestoreSession() {
 
 	Session session;
 
-	for (int i = 0; i < bufferMax; i++) {
+	for (int i = 0; i < kBufferMax; i++) {
 		std::string propKey = IndexPropKey("buffer", i, "path");
 		std::string propStr = propsSession.GetString(propKey.c_str());
 		if (propStr == "")
@@ -727,7 +727,7 @@ void SciTEBase::SaveSessionFile(const GUI::gui_char *sessionName) {
 		fprintf(sessionFile, "\n");
 
 		// Save recent files list
-		for (int i = fileStackMax - 1; i >= 0; i--) {
+		for (int i = kFileStackMax - 1; i >= 0; i--) {
 			if (recentFileStack[i].IsSet()) {
 				propKey = IndexPropKey("mru", j++, "path");
 				fprintf(sessionFile, "%s=%s\n", propKey.c_str(), recentFileStack[i].AsUTF8().c_str());
@@ -882,7 +882,7 @@ void SciTEBase::New() {
 	SetBuffersMenu();
 	CurrentBuffer()->isDirty = false;
 	CurrentBuffer()->failedSave = false;
-	CurrentBuffer()->lifeState = Buffer::open;
+	CurrentBuffer()->lifeState = Buffer::kOpen;
 	jobQueue.isBuilding = false;
 	jobQueue.isBuilt = false;
 	CurrentBuffer()->isReadOnly = false;	// No sense to create an empty, read-only buffer...
@@ -912,7 +912,7 @@ void SciTEBase::RestoreState(const Buffer &buffer, bool restoreBookmarks) {
 	}
 	if (restoreBookmarks) {
 		for (const int bookmark : buffer.bookmarks) {
-			wEditor.Call(SCI_MARKERADD, bookmark, markerBookmark);
+			wEditor.Call(SCI_MARKERADD, bookmark, kMarkerBookmark);
 		}
 	}
 }
@@ -944,7 +944,7 @@ void SciTEBase::Close(bool updateUI, bool loadingSession, bool makingRoomForNew)
 		closingLast = (buffers.lengthVisible == 1) && !buffers.buffers[0].pFileWorker;
 		if (closingLast) {
 			buffers.buffers[0].Init();
-			buffers.buffers[0].lifeState = Buffer::open;
+			buffers.buffers[0].lifeState = Buffer::kOpen;
 			if (extender)
 				extender->InitBuffer(0);
 		} else {
@@ -972,9 +972,9 @@ void SciTEBase::Close(bool updateUI, bool loadingSession, bool makingRoomForNew)
 		propsDiscovered.superPS = &propsLocal;
 		wEditor.Call(SCI_SETDOCPOINTER, 0, GetDocumentAt(buffers.Current()));
 		PerformDeferredTasks();
-		if (bufferNext.lifeState == Buffer::readAll) {
+		if (bufferNext.lifeState == Buffer::kReadAll) {
 			//restoreBookmarks = true;
-			CompleteOpen(ocCompleteSwitch);
+			CompleteOpen(kOcCompleteSwitch);
 			if (extender)
 				extender->OnOpen(filePath.AsUTF8().c_str());
 		}
@@ -1007,14 +1007,14 @@ void SciTEBase::Close(bool updateUI, bool loadingSession, bool makingRoomForNew)
 void SciTEBase::CloseTab(int tab) {
 	const int tabCurrent = buffers.Current();
 	if (tab == tabCurrent) {
-		if (SaveIfUnsure() != saveCancelled) {
+		if (SaveIfUnsure() != kSaveCancelled) {
 			Close();
 			WindowSetFocus(wEditor);
 		}
 	} else {
 		FilePath fpCurrent = buffers.buffers[tabCurrent].file.AbsolutePath();
 		SetDocumentAt(tab);
-		if (SaveIfUnsure() != saveCancelled) {
+		if (SaveIfUnsure() != kSaveCancelled) {
 			Close();
 			WindowSetFocus(wEditor);
 			// Return to the previous buffer
@@ -1024,7 +1024,7 @@ void SciTEBase::CloseTab(int tab) {
 }
 
 void SciTEBase::CloseAllBuffers(bool loadingSession) {
-	if (SaveAllBuffers(false) != saveCancelled) {
+	if (SaveAllBuffers(false) != kSaveCancelled) {
 		while (buffers.lengthVisible > 1)
 			Close(false, loadingSession);
 
@@ -1033,15 +1033,15 @@ void SciTEBase::CloseAllBuffers(bool loadingSession) {
 }
 
 SciTEBase::SaveResult SciTEBase::SaveAllBuffers(bool alwaysYes) {
-	SaveResult choice = saveCompleted;
+	SaveResult choice = kSaveCompleted;
 	UpdateBuffersCurrent();
 	const int currentBuffer = buffers.Current();
-	for (int i = 0; (i < buffers.lengthVisible) && (choice != saveCancelled); i++) {
+	for (int i = 0; (i < buffers.lengthVisible) && (choice != kSaveCancelled); i++) {
 		if (buffers.buffers[i].isDirty) {
 			SetDocumentAt(i);
 			if (alwaysYes) {
 				if (!Save()) {
-					choice = saveCancelled;
+					choice = kSaveCancelled;
 				}
 			} else {
 				choice = SaveIfUnsure(false);
@@ -1135,19 +1135,19 @@ static void EscapeFilePathsForMenu(GUI::gui_string &path) {
 
 void SciTEBase::SetBuffersMenu() {
 	if (buffers.size() <= 1) {
-        DestroyMenuItem(menuBuffers, IDM_BUFFERSEP);
+        DestroyMenuItem(kMenuBuffers, IDM_BUFFERSEP);
     }
 	RemoveAllTabs();
 
 	int pos;
-	for (pos = buffers.lengthVisible; pos < bufferMax; pos++) {
-		DestroyMenuItem(menuBuffers, IDM_BUFFER + pos);
+	for (pos = buffers.lengthVisible; pos < kBufferMax; pos++) {
+		DestroyMenuItem(kMenuBuffers, IDM_BUFFER + pos);
 	}
 	if (buffers.size() > 1) {
 		const int menuStart = 4;
-		SetMenuItem(menuBuffers, menuStart, IDM_BUFFERSEP, GUI_TEXT(""));
+		SetMenuItem(kMenuBuffers, menuStart, IDM_BUFFERSEP, GUI_TEXT(""));
 		for (pos = 0; pos < buffers.lengthVisible; pos++) {
-			const int itemID = bufferCmdID + pos;
+			const int itemID = kBufferCmdID + pos;
 			GUI::gui_string entry;
 			GUI::gui_string titleTab;
 
@@ -1197,7 +1197,7 @@ void SciTEBase::SetBuffersMenu() {
 				titleTab += GUI_TEXT(" *");
 			}
 
-			SetMenuItem(menuBuffers, menuStart + pos + 1, itemID, entry.c_str());
+			SetMenuItem(kMenuBuffers, menuStart + pos + 1, itemID, entry.c_str());
 			TabInsert(pos, titleTab.c_str());
 		}
 	}
@@ -1218,17 +1218,17 @@ void SciTEBase::BuffersMenu() {
 }
 
 void SciTEBase::DeleteFileStackMenu() {
-	for (int stackPos = 0; stackPos < fileStackMax; stackPos++) {
-		DestroyMenuItem(menuFile, fileStackCmdID + stackPos);
+	for (int stackPos = 0; stackPos < kFileStackMax; stackPos++) {
+		DestroyMenuItem(kMenuFile, kFileStackCmdID + stackPos);
 	}
-	DestroyMenuItem(menuFile, IDM_MRU_SEP);
+	DestroyMenuItem(kMenuFile, IDM_MRU_SEP);
 }
 
 void SciTEBase::SetFileStackMenu() {
 	if (recentFileStack[0].IsSet()) {
-		SetMenuItem(menuFile, MRU_START, IDM_MRU_SEP, GUI_TEXT(""));
-		for (int stackPos = 0; stackPos < fileStackMax; stackPos++) {
-			const int itemID = fileStackCmdID + stackPos;
+		SetMenuItem(kMenuFile, MRU_START, IDM_MRU_SEP, GUI_TEXT(""));
+		for (int stackPos = 0; stackPos < kFileStackMax; stackPos++) {
+			const int itemID = kFileStackCmdID + stackPos;
 			if (recentFileStack[stackPos].IsSet()) {
 				GUI::gui_string sEntry;
 
@@ -1242,7 +1242,7 @@ void SciTEBase::SetFileStackMenu() {
 				EscapeFilePathsForMenu(path);
 
 				sEntry += path;
-				SetMenuItem(menuFile, MRU_START + stackPos + 1, itemID, sEntry.c_str());
+				SetMenuItem(kMenuFile, MRU_START + stackPos + 1, itemID, sEntry.c_str());
 			}
 		}
 	}
@@ -1252,7 +1252,7 @@ bool SciTEBase::AddFileToBuffer(const BufferState &bufferState) {
 	// Return whether file loads successfully
 	bool opened = false;
 	if (bufferState.file.Exists()) {
-		opened = Open(bufferState.file, static_cast<OpenFlags>(ofForceLoad));
+		opened = Open(bufferState.file, static_cast<OpenFlags>(kOfForceLoad));
 		// If forced synchronous should set up position, foldState and bookmarks
 		if (opened) {
 			const int iBuffer = buffers.GetDocumentByName(bufferState.file, false);
@@ -1261,7 +1261,7 @@ bool SciTEBase::AddFileToBuffer(const BufferState &bufferState) {
 				buffers.buffers[iBuffer].file.selection = bufferState.file.selection;
 				buffers.buffers[iBuffer].foldState = bufferState.foldState;
 				buffers.buffers[iBuffer].bookmarks = bufferState.bookmarks;
-				if (buffers.buffers[iBuffer].lifeState == Buffer::open) {
+				if (buffers.buffers[iBuffer].lifeState == Buffer::kOpen) {
 					// File was opened synchronously
 					RestoreState(buffers.buffers[iBuffer], true);
 					DisplayAround(buffers.buffers[iBuffer].file);
@@ -1279,8 +1279,8 @@ void SciTEBase::AddFileToStack(const RecentFile &file) {
 	DeleteFileStackMenu();
 	// Only stack non-empty names
 	if (file.IsSet() && !file.IsUntitled()) {
-		int eqPos = fileStackMax - 1;
-		for (int stackPos = 0; stackPos < fileStackMax; stackPos++)
+		int eqPos = kFileStackMax - 1;
+		for (int stackPos = 0; stackPos < kFileStackMax; stackPos++)
 			if (recentFileStack[stackPos].SameNameAs(file))
 				eqPos = stackPos;
 		for (int stackPos = eqPos; stackPos > 0; stackPos--)
@@ -1295,11 +1295,11 @@ void SciTEBase::RemoveFileFromStack(const FilePath &file) {
 		return;
 	DeleteFileStackMenu();
 	int stackPos;
-	for (stackPos = 0; stackPos < fileStackMax; stackPos++) {
+	for (stackPos = 0; stackPos < kFileStackMax; stackPos++) {
 		if (recentFileStack[stackPos].SameNameAs(file)) {
-			for (int movePos = stackPos; movePos < fileStackMax - 1; movePos++)
+			for (int movePos = stackPos; movePos < kFileStackMax - 1; movePos++)
 				recentFileStack[movePos] = recentFileStack[movePos + 1];
-			recentFileStack[fileStackMax - 1].Init();
+			recentFileStack[kFileStackMax - 1].Init();
 			break;
 		}
 	}
@@ -1331,7 +1331,7 @@ void SciTEBase::DisplayAround(const RecentFile &rf) {
 
 void SciTEBase::StackMenuNext() {
 	DeleteFileStackMenu();
-	for (int stackPos = fileStackMax - 1; stackPos >= 0;stackPos--) {
+	for (int stackPos = kFileStackMax - 1; stackPos >= 0;stackPos--) {
 		if (recentFileStack[stackPos].IsSet()) {
 			SetFileStackMenu();
 			StackMenu(stackPos);
@@ -1344,7 +1344,7 @@ void SciTEBase::StackMenuNext() {
 void SciTEBase::StackMenuPrev() {
 	if (recentFileStack[0].IsSet()) {
 		// May need to restore last entry if removed by StackMenu
-		RecentFile rfLast = recentFileStack[fileStackMax - 1];
+		RecentFile rfLast = recentFileStack[kFileStackMax - 1];
 		StackMenu(0);	// Swap current with top of stack
 		for (const RecentFile &rf : recentFileStack) {
 			if (rfLast.SameNameAs(rf)) {
@@ -1354,10 +1354,10 @@ void SciTEBase::StackMenuPrev() {
 		// And rotate the MRU
 		RecentFile rfCurrent = recentFileStack[0];
 		// Move them up
-		for (int stackPos = 0; stackPos < fileStackMax - 1; stackPos++) {
+		for (int stackPos = 0; stackPos < kFileStackMax - 1; stackPos++) {
 			recentFileStack[stackPos] = recentFileStack[stackPos + 1];
 		}
-		recentFileStack[fileStackMax - 1].Init();
+		recentFileStack[kFileStackMax - 1].Init();
 		// Copy current file into first empty
 		for (RecentFile &rf : recentFileStack) {
 			if (!rf.IsSet()) {
@@ -1388,7 +1388,7 @@ void SciTEBase::StackMenu(int pos) {
 			} else if (recentFileStack[pos].IsSet()) {
 				RecentFile rf = recentFileStack[pos];
 				// Already asked user so don't allow Open to ask again.
-				Open(rf, ofNoSaveIfDirty);
+				Open(rf, kOfNoSaveIfDirty);
 				CurrentBuffer()->file.scrollPosition = rf.scrollPosition;
 				CurrentBuffer()->file.selection = rf.selection;
 				DisplayAround(rf);
@@ -1398,8 +1398,8 @@ void SciTEBase::StackMenu(int pos) {
 }
 
 void SciTEBase::RemoveToolsMenu() {
-	for (int pos = 0; pos < toolMax; pos++) {
-		DestroyMenuItem(menuTools, IDM_TOOLS + pos);
+	for (int pos = 0; pos < kToolMax; pos++) {
+		DestroyMenuItem(kMenuTools, IDM_TOOLS + pos);
 	}
 }
 
@@ -1429,7 +1429,7 @@ void SciTEBase::SetToolsMenu() {
 	//command.0.*.py="c:\program files\python\pythonwin\pythonwin" /edit c:\coloreditor.py
 	RemoveToolsMenu();
 	int menuPos = TOOLS_START;
-	for (int item = 0; item < toolMax; item++) {
+	for (int item = 0; item < kToolMax; item++) {
 		const int itemID = IDM_TOOLS + item;
 		std::string prefix = "command.name.";
 		prefix += StdStringFromInteger(item);
@@ -1445,27 +1445,27 @@ void SciTEBase::SetToolsMenu() {
 				sMnemonic += "Ctrl+";
 				sMnemonic += StdStringFromInteger(item);
 			}
-			SetMenuItemLocalised(menuTools, menuPos, itemID, sMenuItem.c_str(),
+			SetMenuItemLocalised(kMenuTools, menuPos, itemID, sMenuItem.c_str(),
 				sMnemonic.length() ? sMnemonic.c_str() : NULL);
 			menuPos++;
 		}
 	}
 
-	DestroyMenuItem(menuTools, IDM_MACRO_SEP);
-	DestroyMenuItem(menuTools, IDM_MACROLIST);
-	DestroyMenuItem(menuTools, IDM_MACROPLAY);
-	DestroyMenuItem(menuTools, IDM_MACRORECORD);
-	DestroyMenuItem(menuTools, IDM_MACROSTOPRECORD);
+	DestroyMenuItem(kMenuTools, IDM_MACRO_SEP);
+	DestroyMenuItem(kMenuTools, IDM_MACROLIST);
+	DestroyMenuItem(kMenuTools, IDM_MACROPLAY);
+	DestroyMenuItem(kMenuTools, IDM_MACRORECORD);
+	DestroyMenuItem(kMenuTools, IDM_MACROSTOPRECORD);
 	menuPos++;
 	if (macrosEnabled) {
-		SetMenuItem(menuTools, menuPos++, IDM_MACRO_SEP, GUI_TEXT(""));
-		SetMenuItemLocalised(menuTools, menuPos++, IDM_MACROLIST,
+		SetMenuItem(kMenuTools, menuPos++, IDM_MACRO_SEP, GUI_TEXT(""));
+		SetMenuItemLocalised(kMenuTools, menuPos++, IDM_MACROLIST,
 		        "&List Macros...", "Shift+F9");
-		SetMenuItemLocalised(menuTools, menuPos++, IDM_MACROPLAY,
+		SetMenuItemLocalised(kMenuTools, menuPos++, IDM_MACROPLAY,
 		        "Run Current &Macro", "F9");
-		SetMenuItemLocalised(menuTools, menuPos++, IDM_MACRORECORD,
+		SetMenuItemLocalised(kMenuTools, menuPos++, IDM_MACRORECORD,
 		        "&Record Macro", "Ctrl+F9");
-		SetMenuItemLocalised(menuTools, menuPos, IDM_MACROSTOPRECORD,
+		SetMenuItemLocalised(kMenuTools, menuPos, IDM_MACROSTOPRECORD,
 		        "S&top Recording Macro", "Ctrl+Shift+F9");
 	}
 }
@@ -1486,7 +1486,7 @@ void SciTEBase::ToolsMenu(int item) {
 		if (jobQueue.IsExecuting() && (jobMode.jobType != jobImmediate))
 			// Busy running a tool and running a second can cause failures.
 			return;
-		if (jobMode.saveBefore == 2 || (jobMode.saveBefore == 1 && (!(CurrentBuffer()->isDirty) || Save())) || SaveIfUnsure() != saveCancelled) {
+		if (jobMode.saveBefore == 2 || (jobMode.saveBefore == 1 && (!(CurrentBuffer()->isDirty) || Save())) || SaveIfUnsure() != kSaveCancelled) {
 			if (jobMode.isFilter)
 				CurrentBuffer()->fileModTime -= 1;
 			if (jobMode.jobType == jobImmediate) {
@@ -2002,7 +2002,7 @@ void SciTEBase::GoMessage(int dir) {
 						}
 					}
 					if (bExists) {
-						if (!Open(messagePath, ofSynchronous)) {
+						if (!Open(messagePath, kOfSynchronous)) {
 							return;
 						}
 						CheckReload();
