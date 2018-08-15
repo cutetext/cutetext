@@ -546,7 +546,7 @@ bool SciTEBase::Open(const FilePath &file, OpenFlags of) {
 		const GUI::gui_string msg = LocaliseMessage("File '^0' is ^1 bytes long, "
 			"larger than 2GB which is the largest SciTE can open.",
 			absPath.AsInternal(), sSize.c_str());
-		WindowMessageBox(wCuteText_, msg, mbsIconWarning);
+		WindowMessageBox(wCuteText_, msg, kMbsIconWarning);
 		return false;
 	}
 	if (fileSize > 0) {
@@ -559,8 +559,8 @@ bool SciTEBase::Open(const FilePath &file, OpenFlags of) {
 			        "larger than the ^2 bytes limit set in the properties.\n"
 			        "Do you still want to open it?",
 			        absPath.AsInternal(), sSize.c_str(), sMaxSize.c_str());
-			const MessageBoxChoice answer = WindowMessageBox(wCuteText_, msg, mbsYesNo | mbsIconWarning);
-			if (answer != mbYes) {
+			const MessageBoxChoice answer = WindowMessageBox(wCuteText_, msg, kMbsYesNo | kMbsIconWarning);
+			if (answer != kMbcYes) {
 				return false;
 			}
 		}
@@ -782,8 +782,8 @@ void SciTEBase::CheckReload() {
 						          "The file '^0' has been modified outside SciTE. Should it be reloaded?",
 						          FileNameExt().AsInternal());
 					}
-					const MessageBoxChoice decision = WindowMessageBox(wCuteText_, msg, mbsYesNo | mbsIconQuestion);
-					if (decision == mbYes) {
+					const MessageBoxChoice decision = WindowMessageBox(wCuteText_, msg, kMbsYesNo | kMbsIconQuestion);
+					if (decision == kMbcYes) {
 						Open(filePath, static_cast<OpenFlags>(of | kOfForceLoad));
 						DisplayAround(rf);
 					}
@@ -804,7 +804,7 @@ void SciTEBase::CheckReload() {
 			GUI::gui_string msg = LocaliseMessage(
 						      "The file '^0' has been deleted.",
 						      filePath.AsInternal());
-			WindowMessageBox(wCuteText_, msg, mbsOK);
+			WindowMessageBox(wCuteText_, msg, kMbsOK);
 		}
 	}
 }
@@ -859,12 +859,12 @@ SciTEBase::SaveResult SciTEBase::SaveIfUnsure(bool forceQuestion, SaveFlags sf) 
 			} else {
 				msg = LocaliseMessage("Save changes to (Untitled)?");
 			}
-			const MessageBoxChoice decision = WindowMessageBox(wCuteText_, msg, mbsYesNoCancel | mbsIconQuestion);
-			if (decision == mbYes) {
+			const MessageBoxChoice decision = WindowMessageBox(wCuteText_, msg, kMbsYesNoCancel | kMbsIconQuestion);
+			if (decision == kMbcYes) {
 				if (!Save(sf))
 					return kSaveCancelled;
 			}
-			return (decision == mbCancel) ? kSaveCancelled : kSaveCompleted;
+			return (decision == kMbcCancel) ? kSaveCancelled : kSaveCompleted;
 		} else {
 			if (!Save(sf))
 				return kSaveCancelled;
@@ -1180,8 +1180,8 @@ bool SciTEBase::Save(SaveFlags sf) {
 				(newModTime != CurrentBuffer()->fileModTime)) {
 				msg = LocaliseMessage("The file '^0' has been modified outside SciTE. Should it be saved?",
 					filePath.AsInternal());
-				const MessageBoxChoice decision = WindowMessageBox(wCuteText_, msg, mbsYesNo | mbsIconQuestion);
-				if (decision == mbNo) {
+				const MessageBoxChoice decision = WindowMessageBox(wCuteText_, msg, kMbsYesNo | kMbsIconQuestion);
+				if (decision == kMbcNo) {
 					return false;
 				}
 			}
@@ -1203,8 +1203,8 @@ bool SciTEBase::Save(SaveFlags sf) {
 				CurrentBuffer()->failedSave = true;
 				msg = LocaliseMessage(
 					"Could not save file '^0'. Save under a different name?", filePath.AsInternal());
-				const MessageBoxChoice decision = WindowMessageBox(wCuteText_, msg, mbsYesNo | mbsIconWarning);
-				if (decision == mbYes) {
+				const MessageBoxChoice decision = WindowMessageBox(wCuteText_, msg, kMbsYesNo | kMbsIconWarning);
+				if (decision == kMbcYes) {
 					return SaveAsDialog();
 				}
 			}
@@ -1484,14 +1484,14 @@ void SciTEBase::GrepRecursive(GrepFlags gf, const FilePath &baseDir, const char 
 		if (*fileTypes == '\0' || fPath.Matches(fileTypes)) {
 			//OutputAppendStringSynchronised(i->AsInternal());
 			//OutputAppendStringSynchronised("\n");
-			FileReader fr(fPath, gf & grepMatchCase);
-			if ((gf & grepBinary) || !fr.BufferContainsNull()) {
+			FileReader fr(fPath, gf & kGrepMatchCase);
+			if ((gf & kGrepBinary) || !fr.BufferContainsNull()) {
 				while (const char *line = fr.Next()) {
 					if (((fr.LineNumber() % checkAfterLines) == 0) && jobQueue.Cancelled())
 						return;
 					const char *match = strstr(line, searchString);
 					if (match) {
-						if (gf & grepWholeWord) {
+						if (gf & kGrepWholeWord) {
 							const char *lineEnd = line + strlen(line);
 							while (match) {
 								if (((match == line) || !IsWordCharacter(match[-1])) &&
@@ -1516,14 +1516,14 @@ void SciTEBase::GrepRecursive(GrepFlags gf, const FilePath &baseDir, const char 
 		}
 	}
 	if (os.length()) {
-		if (gf & grepStdOut) {
+		if (gf & kGrepStdOut) {
 			fwrite(os.c_str(), os.length(), 1, stdout);
 		} else {
 			OutputAppendStringSynchronised(os.c_str());
 		}
 	}
 	for (const FilePath &fPath : directories) {
-		if ((gf & grepDot) || GrepIntoDirectory(fPath.Name())) {
+		if ((gf & kGrepDot) || GrepIntoDirectory(fPath.Name())) {
 			GrepRecursive(gf, fPath, searchString, fileTypes);
 		}
 	}
@@ -1531,7 +1531,7 @@ void SciTEBase::GrepRecursive(GrepFlags gf, const FilePath &baseDir, const char 
 
 void SciTEBase::InternalGrep(GrepFlags gf, const GUI::gui_char *directory, const GUI::gui_char *fileTypes, const char *search, sptr_t &originalEnd) {
 	GUI::ElapsedTime commandTime;
-	if (!(gf & grepStdOut)) {
+	if (!(gf & kGrepStdOut)) {
 		std::string os;
 		os.append(">Internal search for \"");
 		os.append(search);
@@ -1543,11 +1543,11 @@ void SciTEBase::InternalGrep(GrepFlags gf, const GUI::gui_char *directory, const
 		originalEnd += os.length();
 	}
 	std::string searchString(search);
-	if (!(gf & grepMatchCase)) {
+	if (!(gf & kGrepMatchCase)) {
 		LowerCaseAZ(searchString);
 	}
 	GrepRecursive(gf, FilePath(directory), searchString.c_str(), fileTypes);
-	if (!(gf & grepStdOut)) {
+	if (!(gf & kGrepStdOut)) {
 		std::string sExitMessage(">");
 		if (jobQueue.TimeCommands()) {
 			sExitMessage += "    Time: ";

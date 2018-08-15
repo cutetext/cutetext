@@ -718,26 +718,26 @@ protected:
     std::string SelectionFilename();
     void SelectionIntoProperties();
     void SelectionIntoFind(bool stripEol = true);
-    enum AddSelection { addNext, addEach };
+    enum AddSelection { kAddNext, kAddEach };
     void SelectionAdd(AddSelection add);
     virtual std::string EncodeString(const std::string &s);
     virtual void Find() = 0;
     enum MessageBoxChoice {
-        mbOK,
-        mbCancel,
-        mbYes,
-        mbNo
+        kMbcOK,
+        kMbcCancel,
+        kMbcYes,
+        kMbcNo
     };
     typedef int MessageBoxStyle;
     enum {
         // Same as Win32 MB_*
-        mbsOK = 0,
-        mbsYesNo = 4,
-        mbsYesNoCancel = 3,
-        mbsIconQuestion = 0x20,
-        mbsIconWarning = 0x30
+        kMbsOK = 0,
+        kMbsYesNo = 4,
+        kMbsYesNoCancel = 3,
+        kMbsIconQuestion = 0x20,
+        kMbsIconWarning = 0x30
     };
-    virtual MessageBoxChoice WindowMessageBox(GUI::Window &w, const GUI::gui_string &msg, MessageBoxStyle style = mbsIconWarning) = 0;
+    virtual MessageBoxChoice WindowMessageBox(GUI::Window &w, const GUI::GUIString &msg, MessageBoxStyle style = kMbsIconWarning) = 0;
     void FailedSaveMessageBox(const FilePath &filePathSaving);
     virtual void FindMessageBox(const std::string &msg, const std::string *findItem = 0) = 0;
     bool FindReplaceAdvanced() const;
@@ -858,7 +858,7 @@ protected:
     virtual void SizeSubWindows() = 0;
 
     virtual void SetMenuItem(int menuNumber, int position, int itemID,
-        const GUI::gui_char *text, const GUI::gui_char *mnemonic = 0) = 0;
+        const GUI::GUIChar *text, const GUI::GUIChar *mnemonic = 0) = 0;
     virtual void RedrawMenu() {}
     virtual void DestroyMenuItem(int menuNumber, int itemID) = 0;
     virtual void CheckAMenuItem(int wIDCheckItem, bool val) = 0;
@@ -894,8 +894,8 @@ protected:
     void ImportMenu(int pos);
     void SetLanguageMenu();
     void SetPropertiesInitial();
-    GUI::gui_string LocaliseMessage(const char *s,
-        const GUI::gui_char *param0 = 0, const GUI::gui_char *param1 = 0, const GUI::gui_char *param2 = 0);
+    GUI::GUIString LocaliseMessage(const char *s,
+        const GUI::GUIChar *param0 = 0, const GUI::GUIChar *param1 = 0, const GUI::GUIChar *param2 = 0);
     virtual void ReadLocalization();
     std::string GetFileNameProperty(const char *name);
     virtual void ReadPropertiesInitial();
@@ -941,17 +941,17 @@ protected:
     void AskMacroList();
     bool StartMacroList(const char *words);
     void ContinueMacroList(const char *stext);
-    bool ProcessCommandLine(const GUI::gui_string &args, int phase);
+    bool ProcessCommandLine(const GUI::GUIString &args, int phase);
     virtual bool IsStdinBlocked();
     void OpenFromStdin(bool UseOutputPane);
     void OpenFilesFromStdin();
     enum GrepFlags {
-        grepNone = 0, grepWholeWord = 1, grepMatchCase = 2, grepStdOut = 4,
-        grepDot = 8, grepBinary = 16, grepScroll = 32
+        kGrepNone = 0, kGrepWholeWord = 1, kGrepMatchCase = 2, kGrepStdOut = 4,
+        kGrepDot = 8, kGrepBinary = 16, kGrepScroll = 32
     };
     virtual bool GrepIntoDirectory(const FilePath &directory);
-    void GrepRecursive(GrepFlags gf, const FilePath &baseDir, const char *searchString, const GUI::gui_char *fileTypes);
-    void InternalGrep(GrepFlags gf, const GUI::gui_char *directory, const GUI::gui_char *fileTypes,
+    void GrepRecursive(GrepFlags gf, const FilePath &baseDir, const char *searchString, const GUI::GUIChar *fileTypes);
+    void InternalGrep(GrepFlags gf, const GUI::GUIChar *directory, const GUI::GUIChar *fileTypes,
               const char *search, sptr_t &originalEnd);
     void EnumProperties(const char *propkind);
     void SendOneProperty(const char *kind, const char *key, const char *val);
@@ -976,13 +976,13 @@ protected:
     bool isfilenamecharforsel(char ch);
     bool islexerwordcharforsel(char ch);
 
-    CurrentWordHighlight currentWordHighlight;
+    CurrentWordHighlight currentWordHighlight_;
     void HighlightCurrentWord(bool highlight);
-    MatchMarker matchMarker;
-    MatchMarker findMarker;
+    MatchMarker matchMarker_;
+    MatchMarker findMarker_;
 public:
 
-    enum { maxParam = 4 };
+    enum { kMaxParam = 4 };
 
     explicit CuteTextBase(Extension *ext = 0);
     // Deleted copy-constructor and assignment operator.

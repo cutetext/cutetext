@@ -177,7 +177,7 @@ protected:
 
     BOOL HandleReplaceCommand(int cmd, bool reverseDirection = false);
 
-    MessageBoxChoice WindowMessageBox(GUI::Window &w, const GUI::gui_string &msg, MessageBoxStyle style = mbsIconWarning) override;
+    MessageBoxChoice WindowMessageBox(GUI::Window &w, const GUI::gui_string &msg, MessageBoxStyle style = kMbsIconWarning) override;
     void FindMessageBox(const std::string &msg, const std::string *findItem = 0) override;
     void AboutDialog() override;
     void DropFiles(HDROP hdrop);
