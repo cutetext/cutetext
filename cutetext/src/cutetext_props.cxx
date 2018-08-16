@@ -1088,13 +1088,13 @@ void SciTEBase::ReadProperties() {
 		{"preprocessor.end.", kPpcEnd},
 	};
 	const std::string ppSymbol = props.GetNewExpandString("preprocessor.symbol.", fileNameForExtension.c_str());
-	preprocessorSymbol = ppSymbol.empty() ? 0 : ppSymbol[0];
-	preprocOfString.clear();
+	preprocessorSymbol_ = ppSymbol.empty() ? 0 : ppSymbol[0];
+	preprocOfString_.clear();
 	for (const PropToPPC &preproc : propToPPC) {
 		const std::string list = props.GetNewExpandString(preproc.propName, fileNameForExtension.c_str());
 		const std::vector<std::string> words = StringSplit(list, ' ');
 		for (const std::string &word : words) {
-			preprocOfString[word] = preproc.ppc;
+			preprocOfString_[word] = preproc.ppc;
 		}
 	}
 
@@ -1526,7 +1526,7 @@ void SciTEBase::SetPropertiesInitial() {
 	openFilesHere = props.GetInt("check.if.already.open");
 	wrap = props.GetInt("wrap");
 	wrapOutput = props.GetInt("output.wrap");
-	indentationWSVisible = props.GetInt("view.indentation.whitespace", 1);
+	indentationWSVisible_ = props.GetInt("view.indentation.whitespace", 1);
 	sbVisible = props.GetInt("statusbar.visible");
 	tbVisible = props.GetInt("toolbar.visible");
 	tabVisible = props.GetInt("tabbar.visible");

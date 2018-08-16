@@ -84,7 +84,7 @@ void FileLoader::Execute() {
 			IncrementProgress(static_cast<int>(lenFile));
 			if (et.Duration() > nextProgress) {
 				nextProgress = et.Duration() + timeBetweenProgress;
-				pListener->PostOnMainThread(WORK_FILEPROGRESS, this);
+				pListener->PostOnMainThread(kWorkFileProgress, this);
 			}
 			lenFile = fread(&data[0], 1, blockSize, fp);
 			if ((lenFile == 0) && (err == 0)) {
@@ -106,7 +106,7 @@ void FileLoader::Execute() {
 		}
 	}
 	SetCompleted();
-	pListener->PostOnMainThread(WORK_FILEREAD, this);
+	pListener->PostOnMainThread(kWorkFileRead, this);
 }
 
 void FileLoader::Cancel() {
@@ -162,7 +162,7 @@ void FileStorer::Execute() {
 			IncrementProgress(grabSize);
 			if (et.Duration() > nextProgress) {
 				nextProgress = et.Duration() + timeBetweenProgress;
-				pListener->PostOnMainThread(WORK_FILEPROGRESS, this);
+				pListener->PostOnMainThread(kWorkFileProgress, this);
 			}
 			if (written == 0) {
 				err = 1;
@@ -174,7 +174,7 @@ void FileStorer::Execute() {
 		}
 	}
 	SetCompleted();
-	pListener->PostOnMainThread(WORK_FILEWRITTEN, this);
+	pListener->PostOnMainThread(kWorkFileWritten, this);
 }
 
 void FileStorer::Cancel() {

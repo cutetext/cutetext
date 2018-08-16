@@ -217,15 +217,15 @@ void CuteTextBase::Finalise() {
 
 void CuteTextBase::WorkerCommand(int cmd, Worker *pWorker) {
 	switch (cmd) {
-	case WORK_FILEREAD:
+	case kWorkFileRead:
 		TextRead(static_cast<FileLoader *>(pWorker));
 		UpdateProgress(pWorker);
 		break;
-	case WORK_FILEWRITTEN:
+	case kWorkFileWritten:
 		TextWritten(static_cast<FileStorer *>(pWorker));
 		UpdateProgress(pWorker);
 		break;
-	case WORK_FILEPROGRESS:
+	case kWorkFileProgress:
  		UpdateProgress(pWorker);
 		break;
 	}
@@ -235,72 +235,72 @@ void CuteTextBase::WorkerCommand(int cmd, Worker *pWorker) {
 // but we are normally interested in whether the edit or output pane was
 // most recently focused and should be used by menu commands.
 void CuteTextBase::SetPaneFocus(bool editPane) {
-	pwFocussed = editPane ? &wEditor : &wOutput;
+	pwFocussed_ = editPane ? &wEditor_ : &wOutput_;
 }
 
 int CuteTextBase::CallFocused(unsigned int msg, uptr_t wParam, sptr_t lParam) {
-	if (wOutput.HasFocus())
-		return wOutput.Call(msg, wParam, lParam);
+	if (wOutput_.HasFocus())
+		return wOutput_.Call(msg, wParam, lParam);
 	else
-		return wEditor.Call(msg, wParam, lParam);
+		return wEditor_.Call(msg, wParam, lParam);
 }
 
 int CuteTextBase::CallFocusedElseDefault(int defaultValue, unsigned int msg, uptr_t wParam, sptr_t lParam) {
-	if (wOutput.HasFocus())
-		return wOutput.Call(msg, wParam, lParam);
-	else if (wEditor.HasFocus())
-		return wEditor.Call(msg, wParam, lParam);
+	if (wOutput_.HasFocus())
+		return wOutput_.Call(msg, wParam, lParam);
+	else if (wEditor_.HasFocus())
+		return wEditor_.Call(msg, wParam, lParam);
 	else
 		return defaultValue;
 }
 
 sptr_t CuteTextBase::CallPane(int destination, unsigned int msg, uptr_t wParam, sptr_t lParam) {
 	if (destination == IDM_SRCWIN)
-		return wEditor.Call(msg, wParam, lParam);
+		return wEditor_.Call(msg, wParam, lParam);
 	else if (destination == IDM_RUNWIN)
-		return wOutput.Call(msg, wParam, lParam);
+		return wOutput_.Call(msg, wParam, lParam);
 	else
 		return CallFocused(msg, wParam, lParam);
 }
 
 void CuteTextBase::CallChildren(unsigned int msg, uptr_t wParam, sptr_t lParam) {
-	wEditor.Call(msg, wParam, lParam);
-	wOutput.Call(msg, wParam, lParam);
+	wEditor_.Call(msg, wParam, lParam);
+	wOutput_.Call(msg, wParam, lParam);
 }
 
 std::string CuteTextBase::GetTranslationToAbout(const char * const propname, bool retainIfNotFound) {
 #if !defined(GTK)
-	return GUI::UTF8FromString(localiser.Text(propname, retainIfNotFound));
+	return GUI::UTF8FromString(localiser_.Text(propname, retainIfNotFound));
 #else
 	// On GTK+, localiser.Text always converts to UTF-8.
-	return localiser.Text(propname, retainIfNotFound);
+	return localiser_.Text(propname, retainIfNotFound);
 #endif
 }
 
 void CuteTextBase::ViewWhitespace(bool view) {
-	if (view && indentationWSVisible == 2)
-		wEditor.Call(SCI_SETVIEWWS, SCWS_VISIBLEONLYININDENT);
-	else if (view && indentationWSVisible)
-		wEditor.Call(SCI_SETVIEWWS, SCWS_VISIBLEALWAYS);
+	if (view && indentationWSVisible_ == 2)
+		wEditor_.Call(SCI_SETVIEWWS, SCWS_VISIBLEONLYININDENT);
+	else if (view && indentationWSVisible_)
+		wEditor_.Call(SCI_SETVIEWWS, SCWS_VISIBLEALWAYS);
 	else if (view)
-		wEditor.Call(SCI_SETVIEWWS, SCWS_VISIBLEAFTERINDENT);
+		wEditor_.Call(SCI_SETVIEWWS, SCWS_VISIBLEAFTERINDENT);
 	else
-		wEditor.Call(SCI_SETVIEWWS, SCWS_INVISIBLE);
+		wEditor_.Call(SCI_SETVIEWWS, SCWS_INVISIBLE);
 }
 
 StyleAndWords CuteTextBase::GetStyleAndWords(const char *base) {
 	StyleAndWords sw;
 	std::string fileNameForExtension = ExtensionFileName();
-	std::string sAndW = props.GetNewExpandString(base, fileNameForExtension.c_str());
-	sw.styleNumber = atoi(sAndW.c_str());
+	std::string sAndW = props_.GetNewExpandString(base, fileNameForExtension.c_str());
+	sw.styleNumber_ = atoi(sAndW.c_str());
 	const char *space = strchr(sAndW.c_str(), ' ');
 	if (space)
-		sw.words = space + 1;
+		sw.words_ = space + 1;
 	return sw;
 }
 
 void CuteTextBase::AssignKey(int key, int mods, int cmd) {
-	wEditor.Call(SCI_ASSIGNCMDKEY,
+	wEditor_.Call(SCI_ASSIGNCMDKEY,
 	        LongFromTwoShorts(static_cast<short>(key),
 	                static_cast<short>(mods)), cmd);
 }
@@ -311,49 +311,49 @@ void CuteTextBase::AssignKey(int key, int mods, int cmd) {
  */
 void CuteTextBase::SetOverrideLanguage(int cmdID) {
 	RecentFile rf = GetFilePosition();
-	EnsureRangeVisible(wEditor, 0, wEditor.Call(SCI_GETLENGTH), false);
+	EnsureRangeVisible(wEditor_, 0, wEditor_.Call(SCI_GETLENGTH), false);
 	// Zero all the style bytes
-	wEditor.Call(SCI_CLEARDOCUMENTSTYLE);
+	wEditor_.Call(SCI_CLEARDOCUMENTSTYLE);
 
-	CurrentBuffer()->overrideExtension = "x.";
-	CurrentBuffer()->overrideExtension += languageMenu[cmdID].extension;
+	CurrentBuffer()->overrideExtension_ = "x.";
+	CurrentBuffer()->overrideExtension_ += languageMenu_[cmdID].extension_;
 	ReadProperties();
 	SetIndentSettings();
-	wEditor.Call(SCI_COLOURISE, 0, -1);
+	wEditor_.Call(SCI_COLOURISE, 0, -1);
 	Redraw();
 	DisplayAround(rf);
 }
 
 int CuteTextBase::LengthDocument() {
-	return wEditor.Call(SCI_GETLENGTH);
+	return wEditor_.Call(SCI_GETLENGTH);
 }
 
 int CuteTextBase::GetCaretInLine() {
-	const int caret = wEditor.Call(SCI_GETCURRENTPOS);
-	const int line = wEditor.Call(SCI_LINEFROMPOSITION, caret);
-	const int lineStart = wEditor.Call(SCI_POSITIONFROMLINE, line);
+	const int caret = wEditor_.Call(SCI_GETCURRENTPOS);
+	const int line = wEditor_.Call(SCI_LINEFROMPOSITION, caret);
+	const int lineStart = wEditor_.Call(SCI_POSITIONFROMLINE, line);
 	return caret - lineStart;
 }
 
 void CuteTextBase::GetLine(char *text, int sizeText, int line) {
 	if (line < 0)
 		line = GetCurrentLineNumber();
-	int lineStart = wEditor.Call(SCI_POSITIONFROMLINE, line);
-	int lineEnd = wEditor.Call(SCI_GETLINEENDPOSITION, line);
+	int lineStart = wEditor_.Call(SCI_POSITIONFROMLINE, line);
+	int lineEnd = wEditor_.Call(SCI_GETLINEENDPOSITION, line);
 	const int lineMax = lineStart + sizeText - 1;
 	if (lineEnd > lineMax)
 		lineEnd = lineMax;
-	GetRange(wEditor, lineStart, lineEnd, text);
+	GetRange(wEditor_, lineStart, lineEnd, text);
 	text[lineEnd - lineStart] = '\0';
 }
 
 std::string CuteTextBase::GetCurrentLine() {
 	// Get needed buffer size
-	const int len = wEditor.Call(SCI_GETCURLINE, 0, 0);
+	const int len = wEditor_.Call(SCI_GETCURLINE, 0, 0);
 	// Allocate buffer
 	std::string text(len+1, '\0');
 	// And get the line
-	wEditor.CallString(SCI_GETCURLINE, len, &text[0]);
+	wEditor_.CallString(SCI_GETCURLINE, len, &text[0]);
 	return text.substr(0, text.length()-1);
 }
 
@@ -376,7 +376,7 @@ int CuteTextBase::IsLinePreprocessorCondition(char *line) {
 	while (isspacechar(*currChar) && *currChar) {
 		currChar++;
 	}
-	if (preprocessorSymbol && (*currChar == preprocessorSymbol)) {
+	if (preprocessorSymbol_ && (*currChar == preprocessorSymbol_)) {
 		currChar++;
 		while (isspacechar(*currChar) && *currChar) {
 			currChar++;
@@ -387,8 +387,8 @@ int CuteTextBase::IsLinePreprocessorCondition(char *line) {
 			word[i++] = *currChar++;
 		}
 		word[i] = '\0';
-		std::map<std::string, PreProcKind>::const_iterator it = preprocOfString.find(word);
-		if (it != preprocOfString.end()) {
+		std::map<std::string, PreProcKind>::const_iterator it = preprocOfString_.find(word);
+		if (it != preprocOfString_.end()) {
 			return it->second;
 		}
 	}
@@ -409,7 +409,7 @@ bool CuteTextBase::FindMatchingPreprocessorCondition(
 	bool isInside = false;
 	char line[800];	// No need for full line
 	int level = 0;
-	const int maxLines = wEditor.Call(SCI_GETLINECOUNT) - 1;
+	const int maxLines = wEditor_.Call(SCI_GETLINECOUNT) - 1;
 
 	while (curLine < maxLines && curLine > 0 && !isInside) {
 		curLine += direction;	// Increment or decrement
@@ -443,7 +443,7 @@ bool CuteTextBase::FindMatchingPreprocCondPosition(
 	int status;
 
 	// Get current line
-	curLine = wEditor.Call(SCI_LINEFROMPOSITION, mppcAtCaret);
+	curLine = wEditor_.Call(SCI_LINEFROMPOSITION, mppcAtCaret);
 	GetLine(line, sizeof(line), curLine);
 	status = IsLinePreprocessorCondition(line);
 
@@ -456,14 +456,14 @@ bool CuteTextBase::FindMatchingPreprocCondPosition(
 			return true;
 		}
 		break;
-	case ppcMiddle:
+	case kPpcMiddle:
 		if (isForward) {
 			isInside = FindMatchingPreprocessorCondition(curLine, 1, kPpcMiddle, kPpcEnd);
 		} else {
 			isInside = FindMatchingPreprocessorCondition(curLine, -1, kPpcStart, kPpcMiddle);
 		}
 		break;
-	case ppcEnd:
+	case kPpcEnd:
 		if (isForward) {
 			mppcMatch = mppcAtCaret;
 			return true;
@@ -482,7 +482,7 @@ bool CuteTextBase::FindMatchingPreprocCondPosition(
 	}
 
 	if (isInside) {
-		mppcMatch = wEditor.Call(SCI_POSITIONFROMLINE, curLine);
+		mppcMatch = wEditor_.Call(SCI_POSITIONFROMLINE, curLine);
 	}
 	return isInside;
 }
@@ -498,7 +498,7 @@ static bool IsBrace(char ch) {
  */
 bool CuteTextBase::FindMatchingBracePosition(bool editor, int &braceAtCaret, int &braceOpposite, bool sloppy) {
 	bool isInside = false;
-	GUI::ScintillaWindow &win = editor ? wEditor : wOutput;
+	GUI::ScintillaWindow &win = editor ? wEditor_ : wOutput_;
 
 	const int mainSel = win.Call(SCI_GETMAINSELECTION, 0, 0);
 	if (win.Call(SCI_GETSELECTIONNCARETVIRTUALSPACE, mainSel, 0) > 0)
@@ -571,10 +571,10 @@ void CuteTextBase::BraceMatch(bool editor) {
 	int braceAtCaret = -1;
 	int braceOpposite = -1;
 	FindMatchingBracePosition(editor, braceAtCaret, braceOpposite, bracesSloppy);
-	GUI::ScintillaWindow &win = editor ? wEditor : wOutput;
+	GUI::ScintillaWindow &win = editor ? wEditor_ : wOutput_;
 	if ((braceAtCaret != -1) && (braceOpposite == -1)) {
 		win.Call(SCI_BRACEBADLIGHT, braceAtCaret, 0);
-		wEditor.Call(SCI_SETHIGHLIGHTGUIDE, 0);
+		wEditor_.Call(SCI_SETHIGHLIGHTGUIDE, 0);
 	} else {
 		char chBrace = 0;
 		if (braceAtCaret >= 0)
@@ -644,17 +644,17 @@ void CuteTextBase::SetWindowName() {
 
 Sci_CharacterRange CuteTextBase::GetSelection() {
 	Sci_CharacterRange crange;
-	crange.cpMin = wEditor.Call(SCI_GETSELECTIONSTART);
-	crange.cpMax = wEditor.Call(SCI_GETSELECTIONEND);
+	crange.cpMin = wEditor_.Call(SCI_GETSELECTIONSTART);
+	crange.cpMax = wEditor_.Call(SCI_GETSELECTIONEND);
 	return crange;
 }
 
 SelectedRange CuteTextBase::GetSelectedRange() {
-	return SelectedRange(wEditor.Call(SCI_GETCURRENTPOS), wEditor.Call(SCI_GETANCHOR));
+	return SelectedRange(wEditor_.Call(SCI_GETCURRENTPOS), wEditor_.Call(SCI_GETANCHOR));
 }
 
 void CuteTextBase::SetSelection(int anchor, int currentPos) {
-	wEditor.Call(SCI_SETSEL, anchor, currentPos);
+	wEditor_.Call(SCI_SETSEL, anchor, currentPos);
 }
 
 std::string CuteTextBase::GetCTag() {
@@ -735,11 +735,11 @@ bool CuteTextBase::islexerwordcharforsel(char ch) {
 void CuteTextBase::HighlightCurrentWord(bool highlight) {
 	if (!currentWordHighlight.isEnabled)
 		return;
-	if (!wEditor.HasFocus() && !wOutput.HasFocus()) {
+	if (!wEditor_.HasFocus() && !wOutput_.HasFocus()) {
 		// Neither text window has focus, possibly app is inactive so do not highlight
 		return;
 	}
-	GUI::ScintillaWindow &wCurrent = wOutput.HasFocus() ? wOutput : wEditor;
+	GUI::ScintillaWindow &wCurrent = wOutput_.HasFocus() ? wOutput_ : wEditor_;
 	// Remove old indicators if any exist.
 	wCurrent.Call(SCI_SETINDICATORCURRENT, kIndicatorHighlightCurrentWord);
 	const int lenDoc = wCurrent.Call(SCI_GETLENGTH);
@@ -941,11 +941,11 @@ static std::string UnSlashAsNeeded(const std::string &s, bool escapes, bool regu
 void CuteTextBase::RemoveFindMarks() {
 	findMarker.Stop();	// Cancel ongoing background find
 	if (CurrentBuffer()->findMarks != Buffer::kFmNone) {
-		wEditor.Call(SCI_SETINDICATORCURRENT, kIndicatorMatch);
-		wEditor.Call(SCI_INDICATORCLEARRANGE, 0, LengthDocument());
+		wEditor_.Call(SCI_SETINDICATORCURRENT, kIndicatorMatch);
+		wEditor_.Call(SCI_INDICATORCLEARRANGE, 0, LengthDocument());
 		CurrentBuffer()->findMarks = Buffer::kFmNone;
 	}
-	wEditor.Call(SCI_ANNOTATIONCLEARALL);
+	wEditor_.Call(SCI_ANNOTATIONCLEARALL);
 }
 
 int CuteTextBase::SearchFlags(bool regularExpressions) const {
@@ -958,10 +958,10 @@ int CuteTextBase::SearchFlags(bool regularExpressions) const {
 
 void CuteTextBase::MarkAll(MarkPurpose purpose) {
 	RemoveFindMarks();
-	wEditor.Call(SCI_SETINDICATORCURRENT, kIndicatorMatch);
+	wEditor_.Call(SCI_SETINDICATORCURRENT, kIndicatorMatch);
 	if (purpose == kMarkIncremental) {
 		CurrentBuffer()->findMarks = Buffer::kFmTemporary;
-		SetOneIndicator(wEditor, kIndicatorMatch,
+		SetOneIndicator(wEditor_, kIndicatorMatch,
 			IndicatorDefinition(props.GetString("find.indicator.incremental")));
 	} else {
 		CurrentBuffer()->findMarks = Buffer::kFmMarked;
@@ -975,7 +975,7 @@ void CuteTextBase::MarkAll(MarkPurpose purpose) {
 			findIndicator.fillAlpha = alphaIndicator;
 			findIndicator.under = underIndicator;
 		}
-		SetOneIndicator(wEditor, kIndicatorMatch, findIndicator);
+		SetOneIndicator(wEditor_, kIndicatorMatch, findIndicator);
 	}
 
 	const std::string findTarget = UnSlashAsNeeded(EncodeString(findWhat), unSlash, regExp);
@@ -983,7 +983,7 @@ void CuteTextBase::MarkAll(MarkPurpose purpose) {
 		return;
 	}
 
-	findMarker.StartMatch(&wEditor, findTarget,
+	findMarker.StartMatch(&wEditor_, findTarget,
 		SearchFlags(regExp), -1,
 		kIndicatorMatch, (purpose == kMarkWithBookMarks) ? kMarkerBookmark : -1);
 	SetIdler(true);
@@ -1006,18 +1006,18 @@ bool CuteTextBase::FindReplaceAdvanced() const {
 
 int CuteTextBase::FindInTarget(const std::string &findWhatText, int startPosition, int endPosition) {
 	const size_t lenFind = findWhatText.length();
-	wEditor.Call(SCI_SETTARGETSTART, startPosition);
-	wEditor.Call(SCI_SETTARGETEND, endPosition);
-	int posFind = wEditor.CallString(SCI_SEARCHINTARGET, lenFind, findWhatText.c_str());
-	while (findInStyle && posFind != -1 && findStyle != wEditor.Call(SCI_GETSTYLEAT, posFind)) {
+	wEditor_.Call(SCI_SETTARGETSTART, startPosition);
+	wEditor_.Call(SCI_SETTARGETEND, endPosition);
+	int posFind = wEditor_.CallString(SCI_SEARCHINTARGET, lenFind, findWhatText.c_str());
+	while (findInStyle && posFind != -1 && findStyle != wEditor_.Call(SCI_GETSTYLEAT, posFind)) {
 		if (startPosition < endPosition) {
-			wEditor.Call(SCI_SETTARGETSTART, posFind + 1);
-			wEditor.Call(SCI_SETTARGETEND, endPosition);
+			wEditor_.Call(SCI_SETTARGETSTART, posFind + 1);
+			wEditor_.Call(SCI_SETTARGETEND, endPosition);
 		} else {
-			wEditor.Call(SCI_SETTARGETSTART, startPosition);
-			wEditor.Call(SCI_SETTARGETEND, posFind + 1);
+			wEditor_.Call(SCI_SETTARGETSTART, startPosition);
+			wEditor_.Call(SCI_SETTARGETEND, posFind + 1);
 		}
-		posFind = wEditor.CallString(SCI_SEARCHINTARGET, lenFind, findWhatText.c_str());
+		posFind = wEditor_.CallString(SCI_SEARCHINTARGET, lenFind, findWhatText.c_str());
 	}
 	return posFind;
 }
@@ -1052,14 +1052,14 @@ void CuteTextBase::MoveBack() {
 
 void CuteTextBase::ScrollEditorIfNeeded() {
 	GUI::Point ptCaret;
-	const int caret = wEditor.Call(SCI_GETCURRENTPOS);
-	ptCaret.x = wEditor.Call(SCI_POINTXFROMPOSITION, 0, caret);
-	ptCaret.y = wEditor.Call(SCI_POINTYFROMPOSITION, 0, caret);
-	ptCaret.y += wEditor.Call(SCI_TEXTHEIGHT, 0, 0) - 1;
+	const int caret = wEditor_.Call(SCI_GETCURRENTPOS);
+	ptCaret.x = wEditor_.Call(SCI_POINTXFROMPOSITION, 0, caret);
+	ptCaret.y = wEditor_.Call(SCI_POINTYFROMPOSITION, 0, caret);
+	ptCaret.y += wEditor_.Call(SCI_TEXTHEIGHT, 0, 0) - 1;
 
-	const GUI::Rectangle rcEditor = wEditor.GetClientPosition();
+	const GUI::Rectangle rcEditor = wEditor_.GetClientPosition();
 	if (!rcEditor.Contains(ptCaret))
-		wEditor.Call(SCI_SCROLLCARET);
+		wEditor_.Call(SCI_SCROLLCARET);
 }
 
 int CuteTextBase::FindNext(bool reverseDirection, bool showWarnings, bool allowRegExp) {
@@ -1079,7 +1079,7 @@ int CuteTextBase::FindNext(bool reverseDirection, bool showWarnings, bool allowR
 		endPosition = 0;
 	}
 
-	wEditor.Call(SCI_SETSEARCHFLAGS, SearchFlags(allowRegExp && regExp));
+	wEditor_.Call(SCI_SETSEARCHFLAGS, SearchFlags(allowRegExp && regExp));
 	int posFind = FindInTarget(findTarget, startPosition, endPosition);
 	if (posFind == -1 && wrapFind) {
 		// Failed to find in indicated direction
@@ -1106,16 +1106,16 @@ int CuteTextBase::FindNext(bool reverseDirection, bool showWarnings, bool allowR
 	} else {
 		havefound = true;
 		failedfind = false;
-		const int start = wEditor.Call(SCI_GETTARGETSTART);
-		const int end = wEditor.Call(SCI_GETTARGETEND);
+		const int start = wEditor_.Call(SCI_GETTARGETSTART);
+		const int end = wEditor_.Call(SCI_GETTARGETEND);
 		// Ensure found text is styled so that caret will be made visible.
-		const int endStyled = wEditor.Call(SCI_GETENDSTYLED);
+		const int endStyled = wEditor_.Call(SCI_GETENDSTYLED);
 		if (endStyled < end)
-			wEditor.Call(SCI_COLOURISE, endStyled,
-				wEditor.LineStart(wEditor.LineFromPosition(end) + 1));
-		EnsureRangeVisible(wEditor, start, end);
-		wEditor.Call(SCI_SCROLLRANGE, start, end);
-		wEditor.Call(SCI_SETTARGETRANGE, start, end);
+			wEditor_.Call(SCI_COLOURISE, endStyled,
+				wEditor_.LineStart(wEditor_.LineFromPosition(end) + 1));
+		EnsureRangeVisible(wEditor_, start, end);
+		wEditor_.Call(SCI_SCROLLRANGE, start, end);
+		wEditor_.Call(SCI_SETTARGETRANGE, start, end);
 		SetSelection(start, end);
 		if (!replacing && (closeFind != CloseFind::kClosePrevent)) {
 			DestroyFindReplace();
@@ -1142,13 +1142,13 @@ void CuteTextBase::ReplaceOnce(bool showWarnings) {
 	if (havefound) {
 		const std::string replaceTarget = UnSlashAsNeeded(EncodeString(replaceWhat), unSlash, regExp);
 		const Sci_CharacterRange cr = GetSelection();
-		wEditor.Call(SCI_SETTARGETSTART, cr.cpMin);
-		wEditor.Call(SCI_SETTARGETEND, cr.cpMax);
+		wEditor_.Call(SCI_SETTARGETSTART, cr.cpMin);
+		wEditor_.Call(SCI_SETTARGETEND, cr.cpMax);
 		int lenReplaced = static_cast<int>(replaceTarget.length());
 		if (regExp)
-			lenReplaced = wEditor.CallString(SCI_REPLACETARGETRE, replaceTarget.length(), replaceTarget.c_str());
+			lenReplaced = wEditor_.CallString(SCI_REPLACETARGETRE, replaceTarget.length(), replaceTarget.c_str());
 		else	// Allow \0 in replacement
-			wEditor.CallString(SCI_REPLACETARGET, replaceTarget.length(), replaceTarget.c_str());
+			wEditor_.CallString(SCI_REPLACETARGET, replaceTarget.length(), replaceTarget.c_str());
 		SetSelection(static_cast<int>(cr.cpMin) + lenReplaced, static_cast<int>(cr.cpMin));
 		havefound = false;
 	}
@@ -1165,19 +1165,19 @@ int CuteTextBase::DoReplaceAll(bool inSelection) {
 	const Sci_CharacterRange cr = GetSelection();
 	int startPosition = static_cast<int>(cr.cpMin);
 	int endPosition = static_cast<int>(cr.cpMax);
-	const int countSelections = wEditor.Call(SCI_GETSELECTIONS);
+	const int countSelections = wEditor_.Call(SCI_GETSELECTIONS);
 	if (inSelection) {
-		const int selType = wEditor.Call(SCI_GETSELECTIONMODE);
+		const int selType = wEditor_.Call(SCI_GETSELECTIONMODE);
 		if (selType == SC_SEL_LINES) {
 			// Take care to replace in whole lines
-			const int startLine = wEditor.Call(SCI_LINEFROMPOSITION, startPosition);
-			startPosition = wEditor.Call(SCI_POSITIONFROMLINE, startLine);
-			const int endLine = wEditor.Call(SCI_LINEFROMPOSITION, endPosition);
-			endPosition = wEditor.Call(SCI_POSITIONFROMLINE, endLine + 1);
+			const int startLine = wEditor_.Call(SCI_LINEFROMPOSITION, startPosition);
+			startPosition = wEditor_.Call(SCI_POSITIONFROMLINE, startLine);
+			const int endLine = wEditor_.Call(SCI_LINEFROMPOSITION, endPosition);
+			endPosition = wEditor_.Call(SCI_POSITIONFROMLINE, endLine + 1);
 		} else {
 			for (int i=0; i<countSelections; i++) {
-				startPosition = Minimum(startPosition, wEditor.Call(SCI_GETSELECTIONNSTART, i));
-				endPosition = Maximum(endPosition, wEditor.Call(SCI_GETSELECTIONNEND, i));
+				startPosition = Minimum(startPosition, wEditor_.Call(SCI_GETSELECTIONNSTART, i));
+				endPosition = Maximum(endPosition, wEditor_.Call(SCI_GETSELECTIONNEND, i));
 			}
 		}
 		if (startPosition == endPosition) {
@@ -1193,21 +1193,21 @@ int CuteTextBase::DoReplaceAll(bool inSelection) {
 	}
 
 	const std::string replaceTarget = UnSlashAsNeeded(EncodeString(replaceWhat), unSlash, regExp);
-	wEditor.Call(SCI_SETSEARCHFLAGS, SearchFlags(regExp));
+	wEditor_.Call(SCI_SETSEARCHFLAGS, SearchFlags(regExp));
 	int posFind = FindInTarget(findTarget, startPosition, endPosition);
 	if ((posFind != -1) && (posFind <= endPosition)) {
 		int lastMatch = posFind;
 		int replacements = 0;
-		wEditor.Call(SCI_BEGINUNDOACTION);
+		wEditor_.Call(SCI_BEGINUNDOACTION);
 		// Replacement loop
 		while (posFind != -1) {
-			const int lenTarget = wEditor.Call(SCI_GETTARGETEND) - wEditor.Call(SCI_GETTARGETSTART);
+			const int lenTarget = wEditor_.Call(SCI_GETTARGETEND) - wEditor_.Call(SCI_GETTARGETSTART);
 			if (inSelection && countSelections > 1) {
 				// We must check that the found target is entirely inside a selection
 				bool insideASelection = false;
 				for (int i=0; i<countSelections && !insideASelection; i++) {
-					const int startPos= wEditor.Call(SCI_GETSELECTIONNSTART, i);
-					const int endPos = wEditor.Call(SCI_GETSELECTIONNEND, i);
+					const int startPos= wEditor_.Call(SCI_GETSELECTIONNSTART, i);
+					const int endPos = wEditor_.Call(SCI_GETSELECTIONNEND, i);
 					if (posFind >= startPos && posFind + lenTarget <= endPos)
 						insideASelection = true;
 				}
@@ -1225,9 +1225,9 @@ int CuteTextBase::DoReplaceAll(bool inSelection) {
 			}
 			int lenReplaced = static_cast<int>(replaceTarget.length());
 			if (regExp) {
-				lenReplaced = wEditor.CallString(SCI_REPLACETARGETRE, replaceTarget.length(), replaceTarget.c_str());
+				lenReplaced = wEditor_.CallString(SCI_REPLACETARGETRE, replaceTarget.length(), replaceTarget.c_str());
 			} else {
-				wEditor.CallString(SCI_REPLACETARGET, replaceTarget.length(), replaceTarget.c_str());
+				wEditor_.CallString(SCI_REPLACETARGET, replaceTarget.length(), replaceTarget.c_str());
 			}
 			// Modify for change caused by replacement
 			endPosition += lenReplaced - lenTarget;
@@ -1235,7 +1235,7 @@ int CuteTextBase::DoReplaceAll(bool inSelection) {
 			// something better could be done but there are too many special cases
 			lastMatch = posFind + lenReplaced;
 			if (lenTarget <= 0) {
-				lastMatch = wEditor.Call(SCI_POSITIONAFTER, lastMatch);
+				lastMatch = wEditor_.Call(SCI_POSITIONAFTER, lastMatch);
 			}
 			if (lastMatch >= endPosition) {
 				// Run off the end of the document/selection with an empty match
@@ -1251,7 +1251,7 @@ int CuteTextBase::DoReplaceAll(bool inSelection) {
 		} else {
 			SetSelection(lastMatch, lastMatch);
 		}
-		wEditor.Call(SCI_ENDUNDOACTION);
+		wEditor_.Call(SCI_ENDUNDOACTION);
 		return replacements;
 	}
 	return 0;
@@ -1310,22 +1310,22 @@ void CuteTextBase::UIHasFocus() {
 void CuteTextBase::OutputAppendString(const char *s, int len) {
 	if (len == -1)
 		len = static_cast<int>(strlen(s));
-	wOutput.CallString(SCI_APPENDTEXT, len, s);
+	wOutput_.CallString(SCI_APPENDTEXT, len, s);
 	if (scrollOutput) {
-		const int line = wOutput.Call(SCI_GETLINECOUNT, 0, 0);
-		const int lineStart = wOutput.Call(SCI_POSITIONFROMLINE, line);
-		wOutput.Call(SCI_GOTOPOS, lineStart);
+		const int line = wOutput_.Call(SCI_GETLINECOUNT, 0, 0);
+		const int lineStart = wOutput_.Call(SCI_POSITIONFROMLINE, line);
+		wOutput_.Call(SCI_GOTOPOS, lineStart);
 	}
 }
 
 void CuteTextBase::OutputAppendStringSynchronised(const char *s, int len) {
 	if (len == -1)
 		len = static_cast<int>(strlen(s));
-	wOutput.Send(SCI_APPENDTEXT, len, SptrFromString(s));
+	wOutput_.Send(SCI_APPENDTEXT, len, SptrFromString(s));
 	if (scrollOutput) {
-		const sptr_t line = wOutput.Send(SCI_GETLINECOUNT);
-		const sptr_t lineStart = wOutput.Send(SCI_POSITIONFROMLINE, line);
-		wOutput.Send(SCI_GOTOPOS, lineStart);
+		const sptr_t line = wOutput_.Send(SCI_GETLINECOUNT);
+		const sptr_t lineStart = wOutput_.Send(SCI_POSITIONFROMLINE, line);
+		wOutput_.Send(SCI_GOTOPOS, lineStart);
 	}
 }
 
@@ -1360,11 +1360,11 @@ void CuteTextBase::Execute() {
 	}
 
 	if (jobQueue.ClearBeforeExecute()) {
-		wOutput.Call(SCI_CLEARALL);
+		wOutput_.Call(SCI_CLEARALL);
 	}
 
-	wOutput.Call(SCI_MARKERDELETEALL, static_cast<uptr_t>(-1));
-	wEditor.Call(SCI_MARKERDELETEALL, 0);
+	wOutput_.Call(SCI_MARKERDELETEALL, static_cast<uptr_t>(-1));
+	wEditor_.Call(SCI_MARKERDELETEALL, 0);
 	// Ensure the output pane is visible
 	if (jobQueue.ShowOutputPane()) {
 		SetOutputVisibility(true);
@@ -1394,7 +1394,7 @@ void CuteTextBase::SetOutputVisibility(bool show) {
 	} else {
 		if (heightOutput > 0) {
 			heightOutput = NormaliseSplit(0);
-			WindowSetFocus(wEditor);
+			WindowSetFocus(wEditor_);
 		}
 	}
 	SizeSubWindows();
@@ -1415,20 +1415,20 @@ void CuteTextBase::BookmarkAdd(int lineno) {
 	if (lineno == -1)
 		lineno = GetCurrentLineNumber();
 	if (!BookmarkPresent(lineno))
-		wEditor.Call(SCI_MARKERADD, lineno, kMarkerBookmark);
+		wEditor_.Call(SCI_MARKERADD, lineno, kMarkerBookmark);
 }
 
 void CuteTextBase::BookmarkDelete(int lineno) {
 	if (lineno == -1)
 		lineno = GetCurrentLineNumber();
 	if (BookmarkPresent(lineno))
-		wEditor.Call(SCI_MARKERDELETE, lineno, kMarkerBookmark);
+		wEditor_.Call(SCI_MARKERDELETE, lineno, kMarkerBookmark);
 }
 
 bool CuteTextBase::BookmarkPresent(int lineno) {
 	if (lineno == -1)
 		lineno = GetCurrentLineNumber();
-	const int state = wEditor.Call(SCI_MARKERGET, lineno);
+	const int state = wEditor_.Call(SCI_MARKERGET, lineno);
 	return state & (1 << kMarkerBookmark);
 }
 
@@ -1449,21 +1449,21 @@ void CuteTextBase::BookmarkNext(bool forwardScan, bool select) {
 	int sci_marker = SCI_MARKERNEXT;
 	int lineStart = lineno + 1;	//Scan starting from next line
 	int lineRetry = 0;				//If not found, try from the beginning
-	const int anchor = wEditor.Call(SCI_GETANCHOR);
+	const int anchor = wEditor_.Call(SCI_GETANCHOR);
 	if (!forwardScan) {
 		lineStart = lineno - 1;		//Scan starting from previous line
-		lineRetry = wEditor.Call(SCI_GETLINECOUNT, 0, 0L);	//If not found, try from the end
+		lineRetry = wEditor_.Call(SCI_GETLINECOUNT, 0, 0L);	//If not found, try from the end
 		sci_marker = SCI_MARKERPREVIOUS;
 	}
-	int nextLine = wEditor.Call(sci_marker, lineStart, 1 << kMarkerBookmark);
+	int nextLine = wEditor_.Call(sci_marker, lineStart, 1 << kMarkerBookmark);
 	if (nextLine < 0)
-		nextLine = wEditor.Call(sci_marker, lineRetry, 1 << kMarkerBookmark);
+		nextLine = wEditor_.Call(sci_marker, lineRetry, 1 << kMarkerBookmark);
 	if (nextLine < 0 || nextLine == lineno)	// No bookmark (of the given type) or only one, and already on it
 		WarnUser(kWarnNoOtherBookmark);
 	else {
 		GotoLineEnsureVisible(nextLine);
 		if (select) {
-			wEditor.Call(SCI_SETANCHOR, anchor);
+			wEditor_.Call(SCI_SETANCHOR, anchor);
 		}
 	}
 }
@@ -1471,18 +1471,18 @@ void CuteTextBase::BookmarkNext(bool forwardScan, bool select) {
 void CuteTextBase::BookmarkSelectAll() {
 	std::vector<int> bookmarks;
 	int lineBookmark = -1;
-	while ((lineBookmark = wEditor.Call(SCI_MARKERNEXT, lineBookmark + 1, 1 << kMarkerBookmark)) >= 0) {
+	while ((lineBookmark = wEditor_.Call(SCI_MARKERNEXT, lineBookmark + 1, 1 << kMarkerBookmark)) >= 0) {
 		bookmarks.push_back(lineBookmark);
 	}
 	for (size_t i = 0; i < bookmarks.size(); i++) {
 		Sci_CharacterRange crange = {
-			wEditor.Call(SCI_POSITIONFROMLINE, bookmarks[i]),
-			wEditor.Call(SCI_POSITIONFROMLINE, bookmarks[i] + 1)
+			wEditor_.Call(SCI_POSITIONFROMLINE, bookmarks[i]),
+			wEditor_.Call(SCI_POSITIONFROMLINE, bookmarks[i] + 1)
 		};
 		if (i == 0) {
-			wEditor.Call(SCI_SETSELECTION, crange.cpMax, crange.cpMin);
+			wEditor_.Call(SCI_SETSELECTION, crange.cpMax, crange.cpMin);
 		} else {
-			wEditor.Call(SCI_ADDSELECTION, crange.cpMax, crange.cpMin);
+			wEditor_.Call(SCI_ADDSELECTION, crange.cpMax, crange.cpMin);
 		}
 	}
 }
@@ -1493,8 +1493,8 @@ GUI::Rectangle CuteTextBase::GetClientRectangle() {
 
 void CuteTextBase::Redraw() {
 	wCuteText_.InvalidateAll();
-	wEditor.InvalidateAll();
-	wOutput.InvalidateAll();
+	wEditor_.InvalidateAll();
+	wOutput_.InvalidateAll();
 }
 
 std::string CuteTextBase::GetNearestWords(const char *wordStart, size_t searchLen,
@@ -1552,7 +1552,7 @@ void CuteTextBase::FillFunctionDefinition(int pos /*= -1*/) {
 				definitionForDisplay = functionDefinition;
 			}
 
-			wEditor.CallString(SCI_CALLTIPSHOW, lastPosCallTip - currentCallTipWord.length(), definitionForDisplay.c_str());
+			wEditor_.CallString(SCI_CALLTIPSHOW, lastPosCallTip - currentCallTipWord.length(), definitionForDisplay.c_str());
 			ContinueCallTip();
 		}
 	}
@@ -1563,7 +1563,7 @@ bool CuteTextBase::StartCallTip() {
 	currentCallTipWord = "";
 	std::string line = GetCurrentLine();
 	int current = GetCaretInLine();
-	int pos = wEditor.Call(SCI_GETCURRENTPOS);
+	int pos = wEditor_.Call(SCI_GETCURRENTPOS);
 	do {
 		int braces = 0;
 		while (current > 0 && (braces || !Contains(calltipParametersStart, line[current - 1]))) {
@@ -1651,7 +1651,7 @@ void CuteTextBase::ContinueCallTip() {
 		endHighlight = unslashedEndHighlight;
 	}
 
-	wEditor.Call(SCI_CALLTIPSETHLT, startHighlight, endHighlight);
+	wEditor_.Call(SCI_CALLTIPSETHLT, startHighlight, endHighlight);
 }
 
 void CuteTextBase::EliminateDuplicateWords(std::string &words) {
@@ -1699,8 +1699,8 @@ bool CuteTextBase::StartAutoComplete() {
 			calltipParametersStart.c_str(), autoCompleteIgnoreCase);
 		if (words.length()) {
 			EliminateDuplicateWords(words);
-			wEditor.Call(SCI_AUTOCSETSEPARATOR, ' ');
-			wEditor.CallString(SCI_AUTOCSHOW, root.length(), words.c_str());
+			wEditor_.Call(SCI_AUTOCSETSEPARATOR, ' ');
+			wEditor_.CallString(SCI_AUTOCSHOW, root.length(), words.c_str());
 		}
 	}
 	return true;
@@ -1730,7 +1730,7 @@ bool CuteTextBase::StartAutoCompleteWord(bool onlyOneWord) {
 	ft.chrgText.cpMin = 0;
 	ft.chrgText.cpMax = 0;
 	const int flags = SCFIND_WORDSTART | (autoCompleteIgnoreCase ? 0 : SCFIND_MATCHCASE);
-	const int posCurrentWord = wEditor.Call(SCI_GETCURRENTPOS) - static_cast<int>(root.length());
+	const int posCurrentWord = wEditor_.Call(SCI_GETCURRENTPOS) - static_cast<int>(root.length());
 	unsigned int minWordLength = 0;
 	unsigned int nwords = 0;
 
@@ -1739,8 +1739,8 @@ bool CuteTextBase::StartAutoCompleteWord(bool onlyOneWord) {
 	std::string wordsNear;
 	wordsNear.append("\n");
 
-	int posFind = wEditor.CallPointer(SCI_FINDTEXT, flags, &ft);
-	TextReader acc(wEditor);
+	int posFind = wEditor_.CallPointer(SCI_FINDTEXT, flags, &ft);
+	TextReader acc(wEditor_);
 	while (posFind >= 0 && posFind < doclen) {	// search all the document
 		int wordEnd = posFind + static_cast<int>(root.length());
 		if (posFind != posCurrentWord) {
@@ -1748,7 +1748,7 @@ bool CuteTextBase::StartAutoCompleteWord(bool onlyOneWord) {
 				wordEnd++;
 			const unsigned int wordLength = wordEnd - posFind;
 			if (wordLength > root.length()) {
-				std::string word = GetRangeString(wEditor, posFind, wordEnd);
+				std::string word = GetRangeString(wEditor_, posFind, wordEnd);
 				word.insert(0, "\n");
 				word.append("\n");
 				if (wordsNear.find(word.c_str()) == std::string::npos) {	// add a new entry
@@ -1764,7 +1764,7 @@ bool CuteTextBase::StartAutoCompleteWord(bool onlyOneWord) {
 			}
 		}
 		ft.chrg.cpMin = wordEnd;
-		posFind = wEditor.CallPointer(SCI_FINDTEXT, flags, &ft);
+		posFind = wEditor_.CallPointer(SCI_FINDTEXT, flags, &ft);
 	}
 	const size_t length = wordsNear.length();
 	if ((length > 2) && (!onlyOneWord || (minWordLength > root.length()))) {
@@ -1777,10 +1777,10 @@ bool CuteTextBase::StartAutoCompleteWord(bool onlyOneWord) {
 		std::replace(acText.begin(), acText.end(), ' ', '\n');
 		// Return spaces from \001
 		std::replace(acText.begin(), acText.end(), '\001', ' ');
-		wEditor.Call(SCI_AUTOCSETSEPARATOR, '\n');
-		wEditor.CallString(SCI_AUTOCSHOW, root.length(), acText.c_str());
+		wEditor_.Call(SCI_AUTOCSETSEPARATOR, '\n');
+		wEditor_.CallString(SCI_AUTOCSHOW, root.length(), acText.c_str());
 	} else {
-		wEditor.Call(SCI_AUTOCCANCEL);
+		wEditor_.Call(SCI_AUTOCCANCEL);
 	}
 	return true;
 }
@@ -1794,19 +1794,19 @@ bool CuteTextBase::PerformInsertAbbreviation() {
 	const std::string expbuf = UnSlashString(data.c_str());
 	const size_t expbuflen = expbuf.length();
 
-	int caret_pos = wEditor.Call(SCI_GETSELECTIONSTART);
+	int caret_pos = wEditor_.Call(SCI_GETSELECTIONSTART);
 	int sel_start = caret_pos;
-	int sel_length = wEditor.Call(SCI_GETSELECTIONEND) - sel_start;
+	int sel_length = wEditor_.Call(SCI_GETSELECTIONEND) - sel_start;
 	bool at_start = true;
 	bool double_pipe = false;
 	size_t last_pipe = expbuflen;
-	int currentLineNumber = wEditor.Call(SCI_LINEFROMPOSITION, caret_pos);
+	int currentLineNumber = wEditor_.Call(SCI_LINEFROMPOSITION, caret_pos);
 	int indent = 0;
-	const int indentSize = wEditor.Call(SCI_GETINDENT);
-	const int indentChars = (wEditor.Call(SCI_GETUSETABS) && wEditor.Call(SCI_GETTABWIDTH) ? wEditor.Call(SCI_GETTABWIDTH) : 1);
+	const int indentSize = wEditor_.Call(SCI_GETINDENT);
+	const int indentChars = (wEditor_.Call(SCI_GETUSETABS) && wEditor_.Call(SCI_GETTABWIDTH) ? wEditor_.Call(SCI_GETTABWIDTH) : 1);
 	int indentExtra = 0;
 	bool isIndent = true;
-	const int eolMode = wEditor.Call(SCI_GETEOLMODE);
+	const int eolMode = wEditor_.Call(SCI_GETEOLMODE);
 	if (props.GetInt("indent.automatic")) {
 		indent = GetLineIndentation(currentLineNumber);
 	}
@@ -1819,7 +1819,7 @@ bool CuteTextBase::PerformInsertAbbreviation() {
 		}
 	}
 
-	wEditor.Call(SCI_BEGINUNDOACTION);
+	wEditor_.Call(SCI_BEGINUNDOACTION);
 
 	// add the abbreviation one character at a time
 	for (size_t i = 0; i < expbuflen; i++) {
@@ -1844,7 +1844,7 @@ bool CuteTextBase::PerformInsertAbbreviation() {
 				} else {
 					// indent on multiple lines
 					int j = currentLineNumber + 1; // first line indented as others
-					currentLineNumber = wEditor.Call(SCI_LINEFROMPOSITION, caret_pos + sel_length);
+					currentLineNumber = wEditor_.Call(SCI_LINEFROMPOSITION, caret_pos + sel_length);
 					for (; j <= currentLineNumber; j++) {
 						SetLineIndentation(j, GetLineIndentation(j) + indentSize * indentExtra);
 						caret_pos += indentExtra * indentSize / indentChars;
@@ -1869,10 +1869,10 @@ bool CuteTextBase::PerformInsertAbbreviation() {
 				abbrevText += c;
 				break;
 			}
-			if (caret_pos > wEditor.Call(SCI_GETLENGTH)) {
-				caret_pos = wEditor.Call(SCI_GETLENGTH);
+			if (caret_pos > wEditor_.Call(SCI_GETLENGTH)) {
+				caret_pos = wEditor_.Call(SCI_GETLENGTH);
 			}
-			wEditor.CallString(SCI_INSERTTEXT, caret_pos, abbrevText.c_str());
+			wEditor_.CallString(SCI_INSERTTEXT, caret_pos, abbrevText.c_str());
 			if (!double_pipe && at_start) {
 				sel_start += static_cast<int>(abbrevText.length());
 			}
@@ -1896,9 +1896,9 @@ bool CuteTextBase::PerformInsertAbbreviation() {
 	if (double_pipe) {
 		sel_length = 0;
 	}
-	wEditor.Call(SCI_SETSEL, sel_start, sel_start + sel_length);
+	wEditor_.Call(SCI_SETSEL, sel_start, sel_start + sel_length);
 
-	wEditor.Call(SCI_ENDUNDOACTION);
+	wEditor_.Call(SCI_ENDUNDOACTION);
 	return true;
 }
 
@@ -1912,7 +1912,7 @@ bool CuteTextBase::StartInsertAbbreviation() {
 
 bool CuteTextBase::StartExpandAbbreviation() {
 	const int currentPos = GetCaretInLine();
-	const int position = wEditor.Call(SCI_GETCURRENTPOS); // from the beginning
+	const int position = wEditor_.Call(SCI_GETCURRENTPOS); // from the beginning
 	const std::string linebuf(GetCurrentLine(), 0, currentPos);	// Just get text to the left of the caret
 	const int abbrevPos = (currentPos > 32 ? currentPos - 32 : 0);
 	const char *abbrev = linebuf.c_str() + abbrevPos;
@@ -1942,16 +1942,16 @@ bool CuteTextBase::StartExpandAbbreviation() {
 	int caret_pos = -1; // caret position
 	int currentLineNumber = GetCurrentLineNumber();
 	int indent = 0;
-	const int indentSize = wEditor.Call(SCI_GETINDENT);
+	const int indentSize = wEditor_.Call(SCI_GETINDENT);
 	int indentExtra = 0;
 	bool isIndent = true;
-	const int eolMode = wEditor.Call(SCI_GETEOLMODE);
+	const int eolMode = wEditor_.Call(SCI_GETEOLMODE);
 	if (props.GetInt("indent.automatic")) {
 		indent = GetLineIndentation(currentLineNumber);
 	}
 
-	wEditor.Call(SCI_BEGINUNDOACTION);
-	wEditor.Call(SCI_SETSEL, position - abbrevLength, position);
+	wEditor_.Call(SCI_BEGINUNDOACTION);
+	wEditor_.Call(SCI_SETSEL, position - abbrevLength, position);
 
 	// add the abbreviation one character at a time
 	for (size_t i = 0; i < expbuflen; i++) {
@@ -1971,9 +1971,9 @@ bool CuteTextBase::StartExpandAbbreviation() {
 				} else if (caret_pos == -1) {
 					if (i == 0) {
 						// when caret is set at the first place in abbreviation
-						caret_pos = wEditor.Call(SCI_GETCURRENTPOS) - abbrevLength;
+						caret_pos = wEditor_.Call(SCI_GETCURRENTPOS) - abbrevLength;
 					} else {
-						caret_pos = wEditor.Call(SCI_GETCURRENTPOS);
+						caret_pos = wEditor_.Call(SCI_GETCURRENTPOS);
 					}
 				}
 				break;
@@ -1989,7 +1989,7 @@ bool CuteTextBase::StartExpandAbbreviation() {
 				abbrevText += c;
 				break;
 			}
-			wEditor.CallString(SCI_REPLACESEL, 0, abbrevText.c_str());
+			wEditor_.CallString(SCI_REPLACESEL, 0, abbrevText.c_str());
 			if (c == '\n') {
 				isIndent = true;
 				indentExtra = 0;
@@ -2003,10 +2003,10 @@ bool CuteTextBase::StartExpandAbbreviation() {
 
 	// set the caret to the desired position
 	if (caret_pos != -1) {
-		wEditor.Call(SCI_GOTOPOS, caret_pos);
+		wEditor_.Call(SCI_GOTOPOS, caret_pos);
 	}
 
-	wEditor.Call(SCI_ENDUNDOACTION);
+	wEditor_.Call(SCI_ENDUNDOACTION);
 	return true;
 }
 
@@ -2029,28 +2029,28 @@ bool CuteTextBase::StartBlockComment() {
 	}
 	std::string long_comment = comment;
 	long_comment.append(" ");
-	int selectionStart = wEditor.Call(SCI_GETSELECTIONSTART);
-	int selectionEnd = wEditor.Call(SCI_GETSELECTIONEND);
-	const int caretPosition = wEditor.Call(SCI_GETCURRENTPOS);
+	int selectionStart = wEditor_.Call(SCI_GETSELECTIONSTART);
+	int selectionEnd = wEditor_.Call(SCI_GETSELECTIONEND);
+	const int caretPosition = wEditor_.Call(SCI_GETCURRENTPOS);
 	// checking if caret is located in _beginning_ of selected block
 	const bool move_caret = caretPosition < selectionEnd;
-	const int selStartLine = wEditor.Call(SCI_LINEFROMPOSITION, selectionStart);
-	int selEndLine = wEditor.Call(SCI_LINEFROMPOSITION, selectionEnd);
+	const int selStartLine = wEditor_.Call(SCI_LINEFROMPOSITION, selectionStart);
+	int selEndLine = wEditor_.Call(SCI_LINEFROMPOSITION, selectionEnd);
 	const int lines = selEndLine - selStartLine;
-	const int firstSelLineStart = wEditor.Call(SCI_POSITIONFROMLINE, selStartLine);
+	const int firstSelLineStart = wEditor_.Call(SCI_POSITIONFROMLINE, selStartLine);
 	// "caret return" is part of the last selected line
 	if ((lines > 0) &&
-	        (selectionEnd == wEditor.Call(SCI_POSITIONFROMLINE, selEndLine)))
+	        (selectionEnd == wEditor_.Call(SCI_POSITIONFROMLINE, selEndLine)))
 		selEndLine--;
-	wEditor.Call(SCI_BEGINUNDOACTION);
+	wEditor_.Call(SCI_BEGINUNDOACTION);
 	for (int i = selStartLine; i <= selEndLine; i++) {
-		const int lineStart = wEditor.Call(SCI_POSITIONFROMLINE, i);
+		const int lineStart = wEditor_.Call(SCI_POSITIONFROMLINE, i);
 		int lineIndent = lineStart;
-		const int lineEnd = wEditor.Call(SCI_GETLINEENDPOSITION, i);
+		const int lineEnd = wEditor_.Call(SCI_GETLINEENDPOSITION, i);
 		if (!placeCommentsAtLineStart) {
 			lineIndent = GetLineIndentPosition(i);
 		}
-		std::string linebuf = GetRangeString(wEditor, lineIndent, lineEnd);
+		std::string linebuf = GetRangeString(wEditor_, lineIndent, lineEnd);
 		// empty lines are not commented
 		if (linebuf.length() < 1)
 			continue;
@@ -2060,8 +2060,8 @@ bool CuteTextBase::StartBlockComment() {
 				// Removing comment with space after it.
 				commentLength = static_cast<int>(long_comment.length());
 			}
-			wEditor.Call(SCI_SETSEL, lineIndent, lineIndent + commentLength);
-			wEditor.CallString(SCI_REPLACESEL, 0, "");
+			wEditor_.Call(SCI_SETSEL, lineIndent, lineIndent + commentLength);
+			wEditor_.CallString(SCI_REPLACESEL, 0, "");
 			if (i == selStartLine) // is this the first selected line?
 				selectionStart -= commentLength;
 			selectionEnd -= commentLength; // every iteration
@@ -2070,7 +2070,7 @@ bool CuteTextBase::StartBlockComment() {
 		if (i == selStartLine) // is this the first selected line?
 			selectionStart += static_cast<int>(long_comment.length());
 		selectionEnd += static_cast<int>(long_comment.length()); // every iteration
-		wEditor.CallString(SCI_INSERTTEXT, lineIndent, long_comment.c_str());
+		wEditor_.CallString(SCI_INSERTTEXT, lineIndent, long_comment.c_str());
 	}
 	// after uncommenting selection may promote itself to the lines
 	// before the first initially selected line;
@@ -2082,12 +2082,12 @@ bool CuteTextBase::StartBlockComment() {
 	}
 	if (move_caret) {
 		// moving caret to the beginning of selected block
-		wEditor.Call(SCI_GOTOPOS, selectionEnd);
-		wEditor.Call(SCI_SETCURRENTPOS, selectionStart);
+		wEditor_.Call(SCI_GOTOPOS, selectionEnd);
+		wEditor_.Call(SCI_SETCURRENTPOS, selectionStart);
 	} else {
-		wEditor.Call(SCI_SETSEL, selectionStart, selectionEnd);
+		wEditor_.Call(SCI_SETSEL, selectionStart, selectionEnd);
 	}
-	wEditor.Call(SCI_ENDUNDOACTION);
+	wEditor_.Call(SCI_ENDUNDOACTION);
 	return true;
 }
 
@@ -2111,7 +2111,7 @@ bool CuteTextBase::StartBoxComment() {
 	std::string middle_base("comment.box.middle.");
 	std::string end_base("comment.box.end.");
 	const std::string white_space(" ");
-	const std::string eol(LineEndString(wEditor.Call(SCI_GETEOLMODE)));
+	const std::string eol(LineEndString(wEditor_.Call(SCI_GETEOLMODE)));
 	start_base += lexerName;
 	middle_base += lexerName;
 	end_base += lexerName;
@@ -2130,19 +2130,19 @@ bool CuteTextBase::StartBoxComment() {
 	}
 
 	// Note selection and cursor location so that we can reselect text and reposition cursor after we insert comment strings
-	size_t selectionStart = wEditor.Call(SCI_GETSELECTIONSTART);
-	size_t selectionEnd = wEditor.Call(SCI_GETSELECTIONEND);
-	const size_t caretPosition = wEditor.Call(SCI_GETCURRENTPOS);
+	size_t selectionStart = wEditor_.Call(SCI_GETSELECTIONSTART);
+	size_t selectionEnd = wEditor_.Call(SCI_GETSELECTIONEND);
+	const size_t caretPosition = wEditor_.Call(SCI_GETCURRENTPOS);
 	const bool move_caret = caretPosition < selectionEnd;
-	const size_t selStartLine = wEditor.Call(SCI_LINEFROMPOSITION, selectionStart);
-	size_t selEndLine = wEditor.Call(SCI_LINEFROMPOSITION, selectionEnd);
+	const size_t selStartLine = wEditor_.Call(SCI_LINEFROMPOSITION, selectionStart);
+	size_t selEndLine = wEditor_.Call(SCI_LINEFROMPOSITION, selectionEnd);
 	size_t lines = selEndLine - selStartLine + 1;
 
 	// If selection ends at start of last selected line, fake it so that selection goes to end of second-last selected line
-	if (lines > 1 && selectionEnd == static_cast<size_t>(wEditor.Call(SCI_POSITIONFROMLINE, selEndLine))) {
+	if (lines > 1 && selectionEnd == static_cast<size_t>(wEditor_.Call(SCI_POSITIONFROMLINE, selEndLine))) {
 		selEndLine--;
 		lines--;
-		selectionEnd = wEditor.Call(SCI_GETLINEENDPOSITION, selEndLine);
+		selectionEnd = wEditor_.Call(SCI_GETLINEENDPOSITION, selEndLine);
 	}
 
 	// Pad comment strings with appropriate whitespace, then figure out their lengths (end_comment is a bit special-- see below)
@@ -2152,32 +2152,32 @@ bool CuteTextBase::StartBoxComment() {
 	const int middle_comment_length = static_cast<int>(middle_comment.length());
 	const int end_comment_length = static_cast<int>(end_comment.length());
 
-	wEditor.Call(SCI_BEGINUNDOACTION);
+	wEditor_.Call(SCI_BEGINUNDOACTION);
 
 	// Insert start_comment if needed
-	int lineStart = wEditor.Call(SCI_POSITIONFROMLINE, selStartLine);
-	std::string tempString = GetRangeString(wEditor, lineStart, lineStart + start_comment_length);
+	int lineStart = wEditor_.Call(SCI_POSITIONFROMLINE, selStartLine);
+	std::string tempString = GetRangeString(wEditor_, lineStart, lineStart + start_comment_length);
 	if (start_comment != tempString) {
-		wEditor.CallString(SCI_INSERTTEXT, lineStart, start_comment.c_str());
+		wEditor_.CallString(SCI_INSERTTEXT, lineStart, start_comment.c_str());
 		selectionStart += start_comment_length;
 		selectionEnd += start_comment_length;
 	}
 
 	if (lines <= 1) {
 		// Only a single line was selected, so just append whitespace + end-comment at end of line if needed
-		const int lineEnd = wEditor.Call(SCI_GETLINEENDPOSITION, selEndLine);
-		tempString = GetRangeString(wEditor, lineEnd - end_comment_length, lineEnd);
+		const int lineEnd = wEditor_.Call(SCI_GETLINEENDPOSITION, selEndLine);
+		tempString = GetRangeString(wEditor_, lineEnd - end_comment_length, lineEnd);
 		if (end_comment != tempString) {
 			end_comment.insert(0, white_space.c_str());
-			wEditor.CallString(SCI_INSERTTEXT, lineEnd, end_comment.c_str());
+			wEditor_.CallString(SCI_INSERTTEXT, lineEnd, end_comment.c_str());
 		}
 	} else {
 		// More than one line selected, so insert middle_comments where needed
 		for (size_t i = selStartLine + 1; i < selEndLine; i++) {
-			lineStart = wEditor.Call(SCI_POSITIONFROMLINE, i);
-			tempString = GetRangeString(wEditor, lineStart, lineStart + middle_comment_length);
+			lineStart = wEditor_.Call(SCI_POSITIONFROMLINE, i);
+			tempString = GetRangeString(wEditor_, lineStart, lineStart + middle_comment_length);
 			if (middle_comment != tempString) {
-				wEditor.CallString(SCI_INSERTTEXT, lineStart, middle_comment.c_str());
+				wEditor_.CallString(SCI_INSERTTEXT, lineStart, middle_comment.c_str());
 				selectionEnd += middle_comment_length;
 			}
 		}
@@ -2186,35 +2186,35 @@ bool CuteTextBase::StartBoxComment() {
 		// a middle-comment at the start of last selected line and possibly still insert
 		// and end-comment tag after the last line (extra logic is necessary to
 		// deal with the case that user selected the end-comment tag)
-		lineStart = wEditor.Call(SCI_POSITIONFROMLINE, selEndLine);
-		GetRangeString(wEditor, lineStart, lineStart + end_comment_length);
+		lineStart = wEditor_.Call(SCI_POSITIONFROMLINE, selEndLine);
+		GetRangeString(wEditor_, lineStart, lineStart + end_comment_length);
 		if (end_comment != tempString) {
-			tempString = GetRangeString(wEditor, lineStart, lineStart + middle_comment_length);
+			tempString = GetRangeString(wEditor_, lineStart, lineStart + middle_comment_length);
 			if (middle_comment != tempString) {
-				wEditor.CallString(SCI_INSERTTEXT, lineStart, middle_comment.c_str());
+				wEditor_.CallString(SCI_INSERTTEXT, lineStart, middle_comment.c_str());
 				selectionEnd += middle_comment_length;
 			}
 
 			// And since we didn't find the end-comment string yet, we need to check the *next* line
 			//  to see if it's necessary to insert an end-comment string and a linefeed there....
-			lineStart = wEditor.Call(SCI_POSITIONFROMLINE, selEndLine + 1);
-			tempString = GetRangeString(wEditor, lineStart, lineStart + static_cast<int>(end_comment_length));
+			lineStart = wEditor_.Call(SCI_POSITIONFROMLINE, selEndLine + 1);
+			tempString = GetRangeString(wEditor_, lineStart, lineStart + static_cast<int>(end_comment_length));
 			if (end_comment != tempString) {
 				end_comment += eol;
-				wEditor.CallString(SCI_INSERTTEXT, lineStart, end_comment.c_str());
+				wEditor_.CallString(SCI_INSERTTEXT, lineStart, end_comment.c_str());
 			}
 		}
 	}
 
 	if (move_caret) {
 		// moving caret to the beginning of selected block
-		wEditor.Call(SCI_GOTOPOS, selectionEnd);
-		wEditor.Call(SCI_SETCURRENTPOS, selectionStart);
+		wEditor_.Call(SCI_GOTOPOS, selectionEnd);
+		wEditor_.Call(SCI_SETCURRENTPOS, selectionStart);
 	} else {
-		wEditor.Call(SCI_SETSEL, selectionStart, selectionEnd);
+		wEditor_.Call(SCI_SETSEL, selectionStart, selectionEnd);
 	}
 
-	wEditor.Call(SCI_ENDUNDOACTION);
+	wEditor_.Call(SCI_ENDUNDOACTION);
 
 	return true;
 }
@@ -2242,31 +2242,31 @@ bool CuteTextBase::StartStreamComment() {
 	white_space += end_comment;
 	end_comment = white_space;
 	const int start_comment_length = static_cast<int>(start_comment.length());
-	int selectionStart = wEditor.Call(SCI_GETSELECTIONSTART);
-	int selectionEnd = wEditor.Call(SCI_GETSELECTIONEND);
-	const int caretPosition = wEditor.Call(SCI_GETCURRENTPOS);
+	int selectionStart = wEditor_.Call(SCI_GETSELECTIONSTART);
+	int selectionEnd = wEditor_.Call(SCI_GETSELECTIONEND);
+	const int caretPosition = wEditor_.Call(SCI_GETCURRENTPOS);
 	// checking if caret is located in _beginning_ of selected block
 	const bool move_caret = caretPosition < selectionEnd;
 	// if there is no selection?
 	if (selectionStart == selectionEnd) {
-		RangeExtend(wEditor, selectionStart, selectionEnd,
+		RangeExtend(wEditor_, selectionStart, selectionEnd,
 			&CuteTextBase::islexerwordcharforsel);
 		if (selectionStart == selectionEnd)
 			return true; // caret is located _between_ words
 	}
-	wEditor.Call(SCI_BEGINUNDOACTION);
-	wEditor.CallString(SCI_INSERTTEXT, selectionStart, start_comment.c_str());
+	wEditor_.Call(SCI_BEGINUNDOACTION);
+	wEditor_.CallString(SCI_INSERTTEXT, selectionStart, start_comment.c_str());
 	selectionEnd += start_comment_length;
 	selectionStart += start_comment_length;
-	wEditor.CallString(SCI_INSERTTEXT, selectionEnd, end_comment.c_str());
+	wEditor_.CallString(SCI_INSERTTEXT, selectionEnd, end_comment.c_str());
 	if (move_caret) {
 		// moving caret to the beginning of selected block
-		wEditor.Call(SCI_GOTOPOS, selectionEnd);
-		wEditor.Call(SCI_SETCURRENTPOS, selectionStart);
+		wEditor_.Call(SCI_GOTOPOS, selectionEnd);
+		wEditor_.Call(SCI_SETCURRENTPOS, selectionStart);
 	} else {
-		wEditor.Call(SCI_SETSEL, selectionStart, selectionEnd);
+		wEditor_.Call(SCI_SETSEL, selectionStart, selectionEnd);
 	}
-	wEditor.Call(SCI_ENDUNDOACTION);
+	wEditor_.Call(SCI_ENDUNDOACTION);
 	return true;
 }
 
@@ -2274,23 +2274,23 @@ bool CuteTextBase::StartStreamComment() {
  * Return the length of the given line, not counting the EOL.
  */
 int CuteTextBase::GetLineLength(int line) {
-	return wEditor.Call(SCI_GETLINEENDPOSITION, line) - wEditor.Call(SCI_POSITIONFROMLINE, line);
+	return wEditor_.Call(SCI_GETLINEENDPOSITION, line) - wEditor_.Call(SCI_POSITIONFROMLINE, line);
 }
 
 int CuteTextBase::GetCurrentLineNumber() {
-	return wEditor.Call(SCI_LINEFROMPOSITION,
-	        wEditor.Call(SCI_GETCURRENTPOS));
+	return wEditor_.Call(SCI_LINEFROMPOSITION,
+	        wEditor_.Call(SCI_GETCURRENTPOS));
 }
 
 int CuteTextBase::GetCurrentColumnNumber() {
-	const int mainSel = wEditor.Call(SCI_GETMAINSELECTION, 0, 0);
-	return wEditor.Call(SCI_GETCOLUMN, wEditor.Call(SCI_GETSELECTIONNCARET, mainSel, 0), 0) +
-	        wEditor.Call(SCI_GETSELECTIONNCARETVIRTUALSPACE, mainSel, 0);
+	const int mainSel = wEditor_.Call(SCI_GETMAINSELECTION, 0, 0);
+	return wEditor_.Call(SCI_GETCOLUMN, wEditor_.Call(SCI_GETSELECTIONNCARET, mainSel, 0), 0) +
+	        wEditor_.Call(SCI_GETSELECTIONNCARETVIRTUALSPACE, mainSel, 0);
 }
 
 int CuteTextBase::GetCurrentScrollPosition() {
-	const int lineDisplayTop = wEditor.Call(SCI_GETFIRSTVISIBLELINE);
-	return wEditor.Call(SCI_DOCLINEFROMVISIBLE, lineDisplayTop);
+	const int lineDisplayTop = wEditor_.Call(SCI_GETFIRSTVISIBLELINE);
+	return wEditor_.Call(SCI_DOCLINEFROMVISIBLE, lineDisplayTop);
 }
 
 /**
@@ -2302,36 +2302,36 @@ void CuteTextBase::SetTextProperties(
 	std::string ro = GUI::UTF8FromString(localiser.Text("READ"));
 	ps.Set("ReadOnly", CurrentBuffer()->isReadOnly ? ro.c_str() : "");
 
-	const int eolMode = wEditor.Call(SCI_GETEOLMODE);
+	const int eolMode = wEditor_.Call(SCI_GETEOLMODE);
 	ps.Set("EOLMode", eolMode == SC_EOL_CRLF ? "CR+LF" : (eolMode == SC_EOL_LF ? "LF" : "CR"));
 
 	ps.SetInteger("BufferLength", LengthDocument());
 
-	ps.SetInteger("NbOfLines", wEditor.Call(SCI_GETLINECOUNT));
+	ps.SetInteger("NbOfLines", wEditor_.Call(SCI_GETLINECOUNT));
 
 	const Sci_CharacterRange crange = GetSelection();
-	const int selFirstLine = wEditor.Call(SCI_LINEFROMPOSITION, crange.cpMin);
-	const int selLastLine = wEditor.Call(SCI_LINEFROMPOSITION, crange.cpMax);
+	const int selFirstLine = wEditor_.Call(SCI_LINEFROMPOSITION, crange.cpMin);
+	const int selLastLine = wEditor_.Call(SCI_LINEFROMPOSITION, crange.cpMax);
 	long charCount = 0;
-	if (wEditor.Call(SCI_GETSELECTIONMODE) == SC_SEL_RECTANGLE) {
+	if (wEditor_.Call(SCI_GETSELECTIONMODE) == SC_SEL_RECTANGLE) {
 		for (int line = selFirstLine; line <= selLastLine; line++) {
-			const int startPos = wEditor.Call(SCI_GETLINESELSTARTPOSITION, line);
-			const int endPos = wEditor.Call(SCI_GETLINESELENDPOSITION, line);
-			charCount += wEditor.Call(SCI_COUNTCHARACTERS, startPos, endPos);
+			const int startPos = wEditor_.Call(SCI_GETLINESELSTARTPOSITION, line);
+			const int endPos = wEditor_.Call(SCI_GETLINESELENDPOSITION, line);
+			charCount += wEditor_.Call(SCI_COUNTCHARACTERS, startPos, endPos);
 		}
 	} else {
-		charCount = wEditor.Call(SCI_COUNTCHARACTERS, crange.cpMin, crange.cpMax);
+		charCount = wEditor_.Call(SCI_COUNTCHARACTERS, crange.cpMin, crange.cpMax);
 	}
 	ps.SetInteger("SelLength", static_cast<int>(charCount));
-	const int caretPos = wEditor.Call(SCI_GETCURRENTPOS);
-	const int selAnchor = wEditor.Call(SCI_GETANCHOR);
+	const int caretPos = wEditor_.Call(SCI_GETCURRENTPOS);
+	const int selAnchor = wEditor_.Call(SCI_GETANCHOR);
 	int selHeight = selLastLine - selFirstLine + 1;
 	if (0 == (crange.cpMax - crange.cpMin)) {
 		selHeight = 0;
 	} else if (selLastLine == selFirstLine) {
 		selHeight = 1;
-	} else if ((wEditor.Call(SCI_GETCOLUMN, caretPos) == 0 && (selAnchor <= caretPos)) ||
-	        ((wEditor.Call(SCI_GETCOLUMN, selAnchor) == 0) && (selAnchor > caretPos ))) {
+	} else if ((wEditor_.Call(SCI_GETCOLUMN, caretPos) == 0 && (selAnchor <= caretPos)) ||
+	        ((wEditor_.Call(SCI_GETCOLUMN, selAnchor) == 0) && (selAnchor > caretPos ))) {
 		selHeight = selLastLine - selFirstLine;
 	}
 	ps.SetInteger("SelHeight", selHeight);
@@ -2345,7 +2345,7 @@ void CuteTextBase::UpdateStatusBar(bool bUpdateSlowData) {
 		SetTextProperties(propsStatus);
 		propsStatus.SetInteger("LineNumber", GetCurrentLineNumber() + 1);
 		propsStatus.SetInteger("ColumnNumber", GetCurrentColumnNumber() + 1);
-		propsStatus.Set("OverType", wEditor.Call(SCI_GETOVERTYPE) ? "OVR" : "INS");
+		propsStatus.Set("OverType", wEditor_.Call(SCI_GETOVERTYPE) ? "OVR" : "INS");
 
 		char sbKey[32];
 		sprintf(sbKey, "statusbar.text.%d", sbNum);
@@ -2365,7 +2365,7 @@ void CuteTextBase::SetLineIndentation(int line, int indent) {
 	Sci_CharacterRange crange = GetSelection();
 	const Sci_CharacterRange crangeStart = crange;
 	const int posBefore = GetLineIndentPosition(line);
-	wEditor.Call(SCI_SETLINEINDENTATION, line, indent);
+	wEditor_.Call(SCI_SETLINEINDENTATION, line, indent);
 	const int posAfter = GetLineIndentPosition(line);
 	const int posDifference = posAfter - posBefore;
 	if (posAfter > posBefore) {
@@ -2397,11 +2397,11 @@ void CuteTextBase::SetLineIndentation(int line, int indent) {
 }
 
 int CuteTextBase::GetLineIndentation(int line) {
-	return wEditor.Call(SCI_GETLINEINDENTATION, line);
+	return wEditor_.Call(SCI_GETLINEINDENTATION, line);
 }
 
 int CuteTextBase::GetLineIndentPosition(int line) {
-	return wEditor.Call(SCI_GETLINEINDENTPOSITION, line);
+	return wEditor_.Call(SCI_GETLINEINDENTPOSITION, line);
 }
 
 static std::string CreateIndentation(int indent, int tabSize, bool insertSpaces) {
@@ -2420,29 +2420,29 @@ static std::string CreateIndentation(int indent, int tabSize, bool insertSpaces)
 }
 
 void CuteTextBase::ConvertIndentation(int tabSize, int useTabs) {
-	wEditor.Call(SCI_BEGINUNDOACTION);
-	const int maxLine = wEditor.Call(SCI_GETLINECOUNT);
+	wEditor_.Call(SCI_BEGINUNDOACTION);
+	const int maxLine = wEditor_.Call(SCI_GETLINECOUNT);
 	for (int line = 0; line < maxLine; line++) {
-		const int lineStart = wEditor.Call(SCI_POSITIONFROMLINE, line);
+		const int lineStart = wEditor_.Call(SCI_POSITIONFROMLINE, line);
 		const int indent = GetLineIndentation(line);
 		const int indentPos = GetLineIndentPosition(line);
 		const int maxIndentation = 1000;
 		if (indent < maxIndentation) {
-			std::string indentationNow = GetRangeString(wEditor, lineStart, indentPos);
+			std::string indentationNow = GetRangeString(wEditor_, lineStart, indentPos);
 			std::string indentationWanted = CreateIndentation(indent, tabSize, !useTabs);
 			if (indentationNow != indentationWanted) {
-				wEditor.Call(SCI_SETTARGETSTART, lineStart);
-				wEditor.Call(SCI_SETTARGETEND, indentPos);
-				wEditor.CallString(SCI_REPLACETARGET, indentationWanted.length(),
+				wEditor_.Call(SCI_SETTARGETSTART, lineStart);
+				wEditor_.Call(SCI_SETTARGETEND, indentPos);
+				wEditor_.CallString(SCI_REPLACETARGET, indentationWanted.length(),
 					indentationWanted.c_str());
 			}
 		}
 	}
-	wEditor.Call(SCI_ENDUNDOACTION);
+	wEditor_.Call(SCI_ENDUNDOACTION);
 }
 
 bool CuteTextBase::RangeIsAllWhitespace(int start, int end) {
-	TextReader acc(wEditor);
+	TextReader acc(wEditor_);
 	for (int i = start; i < end; i++) {
 		if ((acc[i] != ' ') && (acc[i] != '\t'))
 			return false;
@@ -2452,11 +2452,11 @@ bool CuteTextBase::RangeIsAllWhitespace(int start, int end) {
 
 std::vector<std::string> CuteTextBase::GetLinePartsInStyle(int line, const StyleAndWords &saw) {
 	std::vector<std::string> sv;
-	TextReader acc(wEditor);
+	TextReader acc(wEditor_);
 	std::string s;
 	const bool separateCharacters = saw.IsSingleChar();
-	const int thisLineStart = wEditor.Call(SCI_POSITIONFROMLINE, line);
-	const int nextLineStart = wEditor.Call(SCI_POSITIONFROMLINE, line + 1);
+	const int thisLineStart = wEditor_.Call(SCI_POSITIONFROMLINE, line);
+	const int nextLineStart = wEditor_.Call(SCI_POSITIONFROMLINE, line + 1);
 	for (int pos = thisLineStart; pos < nextLineStart; pos++) {
 		if (acc.StyleAt(pos) == saw.styleNumber) {
 			if (separateCharacters) {
@@ -2538,7 +2538,7 @@ IndentationStatus CuteTextBase::GetIndentState(int line) {
 int CuteTextBase::IndentOfBlock(int line) {
 	if (line < 0)
 		return 0;
-	const int indentSize = wEditor.Call(SCI_GETINDENT);
+	const int indentSize = wEditor_.Call(SCI_GETINDENT);
 	int indentBlock = GetLineIndentation(line);
 	int backLine = line;
 	IndentationStatus indentState = kIsNone;
@@ -2571,7 +2571,7 @@ int CuteTextBase::IndentOfBlock(int line) {
 }
 
 void CuteTextBase::MaintainIndentation(char ch) {
-	const int eolMode = wEditor.Call(SCI_GETEOLMODE);
+	const int eolMode = wEditor_.Call(SCI_GETEOLMODE);
 	const int curLine = GetCurrentLineNumber();
 	int lastLine = curLine - 1;
 
@@ -2595,16 +2595,16 @@ void CuteTextBase::AutomaticIndentation(char ch) {
 	const Sci_CharacterRange crange = GetSelection();
 	const int selStart = static_cast<int>(crange.cpMin);
 	const int curLine = GetCurrentLineNumber();
-	const int thisLineStart = wEditor.Call(SCI_POSITIONFROMLINE, curLine);
-	const int indentSize = wEditor.Call(SCI_GETINDENT);
+	const int thisLineStart = wEditor_.Call(SCI_POSITIONFROMLINE, curLine);
+	const int indentSize = wEditor_.Call(SCI_GETINDENT);
 	int indentBlock = IndentOfBlock(curLine - 1);
 
-	if ((wEditor.Call(SCI_GETLEXER) == SCLEX_PYTHON) &&
+	if ((wEditor_.Call(SCI_GETLEXER) == SCLEX_PYTHON) &&
 			(props.GetInt("indent.python.colon") == 1)) {
-		const int eolMode = wEditor.Call(SCI_GETEOLMODE);
+		const int eolMode = wEditor_.Call(SCI_GETEOLMODE);
 		const int eolChar = (eolMode == SC_EOL_CR ? '\r' : '\n');
 		const int eolChars = (eolMode == SC_EOL_CRLF ? 2 : 1);
-		const int prevLineStart = wEditor.Call(SCI_POSITIONFROMLINE, curLine - 1);
+		const int prevLineStart = wEditor_.Call(SCI_POSITIONFROMLINE, curLine - 1);
 		const int prevIndentPos = GetLineIndentPosition(curLine - 1);
 		const int indentExisting = GetLineIndentation(curLine);
 
@@ -2613,10 +2613,10 @@ void CuteTextBase::AutomaticIndentation(char ch) {
 			int character = 0;
 			int style = 0;
 			for (int p = selStart - eolChars - 1; p > prevLineStart; p--) {
-				style = wEditor.Call(SCI_GETSTYLEAT, p);
+				style = wEditor_.Call(SCI_GETSTYLEAT, p);
 				if (style != SCE_P_DEFAULT && style != SCE_P_COMMENTLINE &&
 						style != SCE_P_COMMENTBLOCK) {
-					character = wEditor.Call(SCI_GETCHARAT, p);
+					character = wEditor_.Call(SCI_GETCHARAT, p);
 					break;
 				}
 			}
@@ -2678,10 +2678,10 @@ void CuteTextBase::CharAdded(int utf32) {
 	if (utf32 > 0XFF) { // MBCS, never let it go.
 		if (imeAutoComplete) {
 			if ((selEnd == selStart) && (selStart > 0)) {
-				if (wEditor.Call(SCI_CALLTIPACTIVE)) {
+				if (wEditor_.Call(SCI_CALLTIPACTIVE)) {
 					ContinueCallTip();
-				} else if (wEditor.Call(SCI_AUTOCACTIVE)) {
-					wEditor.Call(SCI_AUTOCCANCEL);
+				} else if (wEditor_.Call(SCI_AUTOCACTIVE)) {
+					wEditor_.Call(SCI_AUTOCCANCEL);
 					StartAutoComplete();
 				} else {
 					StartAutoComplete();
@@ -2694,11 +2694,11 @@ void CuteTextBase::CharAdded(int utf32) {
 	// SBCS
 	const char ch = static_cast<char>(utf32);
 	if ((selEnd == selStart) && (selStart > 0)) {
-		if (wEditor.Call(SCI_CALLTIPACTIVE)) {
+		if (wEditor_.Call(SCI_CALLTIPACTIVE)) {
 			if (Contains(calltipParametersEnd, ch)) {
 				braceCount--;
 				if (braceCount < 1)
-					wEditor.Call(SCI_CALLTIPCANCEL);
+					wEditor_.Call(SCI_CALLTIPCANCEL);
 				else
 					StartCallTip();
 			} else if (Contains(calltipParametersStart, ch)) {
@@ -2707,14 +2707,14 @@ void CuteTextBase::CharAdded(int utf32) {
 			} else {
 				ContinueCallTip();
 			}
-		} else if (wEditor.Call(SCI_AUTOCACTIVE)) {
+		} else if (wEditor_.Call(SCI_AUTOCACTIVE)) {
 			if (Contains(calltipParametersStart, ch)) {
 				braceCount++;
 				StartCallTip();
 			} else if (Contains(calltipParametersEnd, ch)) {
 				braceCount--;
 			} else if (!Contains(wordCharacters, ch)) {
-				wEditor.Call(SCI_AUTOCCANCEL);
+				wEditor_.Call(SCI_AUTOCCANCEL);
 				if (Contains(autoCompleteStartCharacters, ch)) {
 					StartAutoComplete();
 				}
@@ -2737,7 +2737,7 @@ void CuteTextBase::CharAdded(int utf32) {
 					StartAutoComplete();
 				} else if (props.GetInt("autocompleteword.automatic") && Contains(wordCharacters, ch)) {
 					StartAutoCompleteWord(true);
-					autoCCausedByOnlyOne = wEditor.Call(SCI_AUTOCACTIVE);
+					autoCCausedByOnlyOne = wEditor_.Call(SCI_AUTOCACTIVE);
 				}
 			}
 		}
@@ -2753,8 +2753,8 @@ void CuteTextBase::CharAddedOutput(int ch) {
 		NewLineInOutput();
 	} else if (ch == '(') {
 		// Potential autocompletion of symbols when $( typed
-		const int selStart = wOutput.Call(SCI_GETSELECTIONSTART);
-		if ((selStart > 1) && (wOutput.Call(SCI_GETCHARAT, selStart - 2, 0) == '$')) {
+		const int selStart = wOutput_.Call(SCI_GETSELECTIONSTART);
+		if ((selStart > 1) && (wOutput_.Call(SCI_GETCHARAT, selStart - 2, 0) == '$')) {
 			std::string symbols;
 			const char *key = NULL;
 			const char *val = NULL;
@@ -2768,8 +2768,8 @@ void CuteTextBase::CharAddedOutput(int ch) {
 			symList.Set(symbols.c_str());
 			std::string words = symList.GetNearestWords("", 0, true);
 			if (words.length()) {
-				wEditor.Call(SCI_AUTOCSETSEPARATOR, ' ');
-				wOutput.CallString(SCI_AUTOCSHOW, 0, words.c_str());
+				wEditor_.Call(SCI_AUTOCSETSEPARATOR, ' ');
+				wOutput_.CallString(SCI_AUTOCSHOW, 0, words.c_str());
 			}
 		}
 	}
@@ -2800,7 +2800,7 @@ bool CuteTextBase::HandleXml(char ch) {
 	}
 
 	// Grab the last 512 characters or so
-	const int nCaret = wEditor.Call(SCI_GETCURRENTPOS);
+	const int nCaret = wEditor_.Call(SCI_GETCURRENTPOS);
 	int nMin = nCaret - 512;
 	if (nMin < 0) {
 		nMin = 0;
@@ -2809,7 +2809,7 @@ bool CuteTextBase::HandleXml(char ch) {
 	if (nCaret - nMin < 3) {
 		return false; // Smallest tag is 3 characters ex. <p>
 	}
-	std::string sel = GetRangeString(wEditor, nMin, nCaret);
+	std::string sel = GetRangeString(wEditor_, nMin, nCaret);
 
 	if (sel[nCaret - nMin - 2] == '/') {
 		// User typed something like "<br/>"
@@ -2824,13 +2824,13 @@ bool CuteTextBase::HandleXml(char ch) {
 	std::string strFound = FindOpenXmlTag(sel.c_str(), nCaret - nMin);
 
 	if (strFound.length() > 0) {
-		wEditor.Call(SCI_BEGINUNDOACTION);
+		wEditor_.Call(SCI_BEGINUNDOACTION);
 		std::string toInsert = "</";
 		toInsert += strFound;
 		toInsert += ">";
-		wEditor.CallString(SCI_REPLACESEL, 0, toInsert.c_str());
+		wEditor_.CallString(SCI_REPLACESEL, 0, toInsert.c_str());
 		SetSelection(nCaret, nCaret);
-		wEditor.Call(SCI_ENDUNDOACTION);
+		wEditor_.Call(SCI_ENDUNDOACTION);
 		return true;
 	}
 
@@ -2877,7 +2877,7 @@ std::string CuteTextBase::FindOpenXmlTag(const char sel[], int nSize) {
 void CuteTextBase::GoMatchingBrace(bool select) {
 	int braceAtCaret = -1;
 	int braceOpposite = -1;
-	const bool isInside = FindMatchingBracePosition(pwFocussed == &wEditor, braceAtCaret, braceOpposite, true);
+	const bool isInside = FindMatchingBracePosition(pwFocussed == &wEditor_, braceAtCaret, braceOpposite, true);
 	// Convert the character positions into caret positions based on whether
 	// the caret position was inside or outside the braces.
 	if (isInside) {
@@ -2906,23 +2906,23 @@ void CuteTextBase::GoMatchingBrace(bool select) {
 // Text	ConditionalUp	Ctrl+J	Finds the previous matching preprocessor condition
 // Text	ConditionalDown	Ctrl+K	Finds the next matching preprocessor condition
 void CuteTextBase::GoMatchingPreprocCond(int direction, bool select) {
-	int mppcAtCaret = wEditor.Call(SCI_GETCURRENTPOS);
+	int mppcAtCaret = wEditor_.Call(SCI_GETCURRENTPOS);
 	int mppcMatch = -1;
 	const int forward = (direction == IDM_NEXTMATCHPPC);
 	const bool isInside = FindMatchingPreprocCondPosition(forward, mppcAtCaret, mppcMatch);
 
 	if (isInside && mppcMatch >= 0) {
-		EnsureRangeVisible(wEditor, mppcMatch, mppcMatch);
+		EnsureRangeVisible(wEditor_, mppcMatch, mppcMatch);
 		if (select) {
 			// Selection changes the rules a bit...
-			const int selStart = wEditor.Call(SCI_GETSELECTIONSTART);
-			const int selEnd = wEditor.Call(SCI_GETSELECTIONEND);
+			const int selStart = wEditor_.Call(SCI_GETSELECTIONSTART);
+			const int selEnd = wEditor_.Call(SCI_GETSELECTIONEND);
 			// pivot isn't the caret position but the opposite (if there is a selection)
 			const int pivot = (mppcAtCaret == selStart ? selEnd : selStart);
 			if (forward) {
 				// Caret goes one line beyond the target, to allow selecting the whole line
-				const int lineNb = wEditor.Call(SCI_LINEFROMPOSITION, mppcMatch);
-				mppcMatch = wEditor.Call(SCI_POSITIONFROMLINE, lineNb + 1);
+				const int lineNb = wEditor_.Call(SCI_LINEFROMPOSITION, mppcMatch);
+				mppcMatch = wEditor_.Call(SCI_POSITIONFROMLINE, lineNb + 1);
 			}
 			SetSelection(pivot, mppcMatch);
 		} else {
@@ -2966,7 +2966,7 @@ void CuteTextBase::SetLineNumberWidth() {
 			// The margin size will be expanded if the current buffer's maximum
 			// line number would overflow the margin.
 
-			int lineCount = wEditor.Call(SCI_GETLINECOUNT);
+			int lineCount = wEditor_.Call(SCI_GETLINECOUNT);
 
 			lineNumWidth = 1;
 			while (lineCount >= 10) {
@@ -2982,11 +2982,11 @@ void CuteTextBase::SetLineNumberWidth() {
 			lineNumWidth = 0;
 		// The 4 here allows for spacing: 1 pixel on left and 3 on right.
 		std::string nNines(lineNumWidth, '9');
-		const int pixelWidth = 4 + wEditor.CallString(SCI_TEXTWIDTH, STYLE_LINENUMBER, nNines.c_str());
+		const int pixelWidth = 4 + wEditor_.CallString(SCI_TEXTWIDTH, STYLE_LINENUMBER, nNines.c_str());
 
-		wEditor.Call(SCI_SETMARGINWIDTHN, 0, pixelWidth);
+		wEditor_.Call(SCI_SETMARGINWIDTHN, 0, pixelWidth);
 	} else {
-		wEditor.Call(SCI_SETMARGINWIDTHN, 0, 0);
+		wEditor_.Call(SCI_SETMARGINWIDTHN, 0, 0);
 	}
 }
 
@@ -3001,7 +3001,7 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 			SetIndentSettings();
 			SetEol();
 			UpdateStatusBar(true);
-			WindowSetFocus(wEditor);
+			WindowSetFocus(wEditor_);
 		}
 		break;
 	case IDM_OPEN:
@@ -3010,20 +3010,20 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 		// may decide to open multiple files so do not know yet
 		// how much room needed.
 		OpenDialog(filePath.Directory(), GUI::StringFromUTF8(props.GetExpandedString("open.filter")).c_str());
-		WindowSetFocus(wEditor);
+		WindowSetFocus(wEditor_);
 		break;
 	case IDM_OPENSELECTED:
 		if (OpenSelected())
-			WindowSetFocus(wEditor);
+			WindowSetFocus(wEditor_);
 		break;
 	case IDM_REVERT:
 		Revert();
-		WindowSetFocus(wEditor);
+		WindowSetFocus(wEditor_);
 		break;
 	case IDM_CLOSE:
 		if (SaveIfUnsure() != kSaveCancelled) {
 			Close();
-			WindowSetFocus(wEditor);
+			WindowSetFocus(wEditor_);
 		}
 		break;
 	case IDM_CLOSEALL:
@@ -3031,41 +3031,41 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 		break;
 	case IDM_SAVE:
 		Save();
-		WindowSetFocus(wEditor);
+		WindowSetFocus(wEditor_);
 		break;
 	case IDM_SAVEALL:
 		SaveAllBuffers(true);
 		break;
 	case IDM_SAVEAS:
 		SaveAsDialog();
-		WindowSetFocus(wEditor);
+		WindowSetFocus(wEditor_);
 		break;
 	case IDM_SAVEACOPY:
 		SaveACopy();
-		WindowSetFocus(wEditor);
+		WindowSetFocus(wEditor_);
 		break;
 	case IDM_COPYPATH:
 		CopyPath();
 		break;
 	case IDM_SAVEASHTML:
 		SaveAsHTML();
-		WindowSetFocus(wEditor);
+		WindowSetFocus(wEditor_);
 		break;
 	case IDM_SAVEASRTF:
 		SaveAsRTF();
-		WindowSetFocus(wEditor);
+		WindowSetFocus(wEditor_);
 		break;
 	case IDM_SAVEASPDF:
 		SaveAsPDF();
-		WindowSetFocus(wEditor);
+		WindowSetFocus(wEditor_);
 		break;
 	case IDM_SAVEASTEX:
 		SaveAsTEX();
-		WindowSetFocus(wEditor);
+		WindowSetFocus(wEditor_);
 		break;
 	case IDM_SAVEASXML:
 		SaveAsXML();
-		WindowSetFocus(wEditor);
+		WindowSetFocus(wEditor_);
 		break;
 	case IDM_PRINT:
 		Print(true);
@@ -3075,11 +3075,11 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 		break;
 	case IDM_LOADSESSION:
 		LoadSessionDialog();
-		WindowSetFocus(wEditor);
+		WindowSetFocus(wEditor_);
 		break;
 	case IDM_SAVESESSION:
 		SaveSessionDialog();
-		WindowSetFocus(wEditor);
+		WindowSetFocus(wEditor_);
 		break;
 	case IDM_ABOUT:
 		AboutDialog();
@@ -3099,13 +3099,13 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 		} else {
 			codePage = props.GetInt("code.page");
 		}
-		wEditor.Call(SCI_SETCODEPAGE, codePage);
+		wEditor_.Call(SCI_SETCODEPAGE, codePage);
 		break;
 
 	case IDM_NEXTFILESTACK:
 		if (buffers.size() > 1 && props.GetInt("buffers.zorder.switching")) {
 			NextInStack(); // next most recently selected buffer
-			WindowSetFocus(wEditor);
+			WindowSetFocus(wEditor_);
 			break;
 		}
 		/* FALLTHRU */
@@ -3113,7 +3113,7 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 	case IDM_NEXTFILE:
 		if (buffers.size() > 1) {
 			Next(); // Use Next to tabs move left-to-right
-			WindowSetFocus(wEditor);
+			WindowSetFocus(wEditor_);
 		} else {
 			// Not using buffers - switch to next file on MRU
 			StackMenuNext();
@@ -3123,7 +3123,7 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 	case IDM_PREVFILESTACK:
 		if (buffers.size() > 1 && props.GetInt("buffers.zorder.switching")) {
 			PrevInStack(); // next least recently selected buffer
-			WindowSetFocus(wEditor);
+			WindowSetFocus(wEditor_);
 			break;
 		}
 		/* FALLTHRU */
@@ -3131,7 +3131,7 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 	case IDM_PREVFILE:
 		if (buffers.size() > 1) {
 			Prev(); // Use Prev to tabs move right-to-left
-			WindowSetFocus(wEditor);
+			WindowSetFocus(wEditor_);
 		} else {
 			// Not using buffers - switch to previous file on MRU
 			StackMenuPrev();
@@ -3140,11 +3140,11 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 
 	case IDM_MOVETABRIGHT:
 		MoveTabRight();
-		WindowSetFocus(wEditor);
+		WindowSetFocus(wEditor_);
 		break;
 	case IDM_MOVETABLEFT:
 		MoveTabLeft();
-		WindowSetFocus(wEditor);
+		WindowSetFocus(wEditor_);
 		break;
 
 	case IDM_UNDO:
@@ -3267,7 +3267,7 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 		GoMatchingPreprocCond(IDM_NEXTMATCHPPC, true);
 		break;
 	case IDM_SHOWCALLTIP:
-		if (wEditor.Call(SCI_CALLTIPACTIVE)) {
+		if (wEditor_.Call(SCI_CALLTIPACTIVE)) {
 			currentCallTip = (currentCallTip + 1 == maxCallTips) ? 0 : currentCallTip + 1;
 			FillFunctionDefinition();
 		} else {
@@ -3285,12 +3285,12 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 		break;
 
 	case IDM_ABBREV:
-		wEditor.Call(SCI_CANCEL);
+		wEditor_.Call(SCI_CANCEL);
 		StartExpandAbbreviation();
 		break;
 
 	case IDM_INS_ABBREV:
-		wEditor.Call(SCI_CANCEL);
+		wEditor_.Call(SCI_CANCEL);
 		StartInsertAbbreviation();
 		break;
 
@@ -3333,19 +3333,19 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 		break;
 
 	case IDM_EXPAND:
-		wEditor.Call(SCI_TOGGLEFOLD, GetCurrentLineNumber());
+		wEditor_.Call(SCI_TOGGLEFOLD, GetCurrentLineNumber());
 		break;
 
 	case IDM_TOGGLE_FOLDRECURSIVE: {
 			const int line = GetCurrentLineNumber();
-			const int level = wEditor.Call(SCI_GETFOLDLEVEL, line);
+			const int level = wEditor_.Call(SCI_GETFOLDLEVEL, line);
 			ToggleFoldRecursive(line, level);
 		}
 		break;
 
 	case IDM_EXPAND_ENSURECHILDRENVISIBLE: {
 			const int line = GetCurrentLineNumber();
-			const int level = wEditor.Call(SCI_GETFOLDLEVEL, line);
+			const int level = wEditor_.Call(SCI_GETFOLDLEVEL, line);
 			EnsureAllChildrenVisible(line, level);
 		}
 		break;
@@ -3377,18 +3377,18 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 
 	case IDM_SELMARGIN:
 		margin = !margin;
-		wEditor.Call(SCI_SETMARGINWIDTHN, 1, margin ? marginWidth : 0);
+		wEditor_.Call(SCI_SETMARGINWIDTHN, 1, margin ? marginWidth : 0);
 		CheckMenus();
 		break;
 
 	case IDM_FOLDMARGIN:
 		foldMargin = !foldMargin;
-		wEditor.Call(SCI_SETMARGINWIDTHN, 2, foldMargin ? foldMarginWidth : 0);
+		wEditor_.Call(SCI_SETMARGINWIDTHN, 2, foldMargin ? foldMarginWidth : 0);
 		CheckMenus();
 		break;
 
 	case IDM_VIEWEOL:
-		wEditor.Call(SCI_SETVIEWEOL, !wEditor.Call(SCI_GETVIEWEOL));
+		wEditor_.Call(SCI_SETVIEWEOL, !wEditor_.Call(SCI_GETVIEWEOL));
 		CheckMenus();
 		break;
 
@@ -3410,19 +3410,19 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 
 	case IDM_WRAP:
 		wrap = !wrap;
-		wEditor.Call(SCI_SETWRAPMODE, wrap ? wrapStyle : SC_WRAP_NONE);
+		wEditor_.Call(SCI_SETWRAPMODE, wrap ? wrapStyle : SC_WRAP_NONE);
 		CheckMenus();
 		break;
 
 	case IDM_WRAPOUTPUT:
 		wrapOutput = !wrapOutput;
-		wOutput.Call(SCI_SETWRAPMODE, wrapOutput ? wrapStyle : SC_WRAP_NONE);
+		wOutput_.Call(SCI_SETWRAPMODE, wrapOutput ? wrapStyle : SC_WRAP_NONE);
 		CheckMenus();
 		break;
 
 	case IDM_READONLY:
 		CurrentBuffer()->isReadOnly = !CurrentBuffer()->isReadOnly;
-		wEditor.Call(SCI_SETREADONLY, CurrentBuffer()->isReadOnly);
+		wEditor_.Call(SCI_SETREADONLY, CurrentBuffer()->isReadOnly);
 		UpdateStatusBar(true);
 		CheckMenus();
 		SetBuffersMenu();
@@ -3442,45 +3442,45 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 		break;
 
 	case IDM_CLEAROUTPUT:
-		wOutput.Call(SCI_CLEARALL);
+		wOutput_.Call(SCI_CLEARALL);
 		break;
 
 	case IDM_SWITCHPANE:
-		if (pwFocussed == &wEditor)
-			WindowSetFocus(wOutput);
+		if (pwFocussed == &wEditor_)
+			WindowSetFocus(wOutput_);
 		else
-			WindowSetFocus(wEditor);
+			WindowSetFocus(wEditor_);
 		break;
 
 	case IDM_EOL_CRLF:
-		wEditor.Call(SCI_SETEOLMODE, SC_EOL_CRLF);
+		wEditor_.Call(SCI_SETEOLMODE, SC_EOL_CRLF);
 		CheckMenus();
 		UpdateStatusBar(false);
 		break;
 
 	case IDM_EOL_CR:
-		wEditor.Call(SCI_SETEOLMODE, SC_EOL_CR);
+		wEditor_.Call(SCI_SETEOLMODE, SC_EOL_CR);
 		CheckMenus();
 		UpdateStatusBar(false);
 		break;
 	case IDM_EOL_LF:
-		wEditor.Call(SCI_SETEOLMODE, SC_EOL_LF);
+		wEditor_.Call(SCI_SETEOLMODE, SC_EOL_LF);
 		CheckMenus();
 		UpdateStatusBar(false);
 		break;
 	case IDM_EOL_CONVERT:
-		wEditor.Call(SCI_CONVERTEOLS, wEditor.Call(SCI_GETEOLMODE));
+		wEditor_.Call(SCI_CONVERTEOLS, wEditor_.Call(SCI_GETEOLMODE));
 		break;
 
 	case IDM_VIEWSPACE:
-		ViewWhitespace(!wEditor.Call(SCI_GETVIEWWS));
+		ViewWhitespace(!wEditor_.Call(SCI_GETVIEWWS));
 		CheckMenus();
 		Redraw();
 		break;
 
 	case IDM_VIEWGUIDES: {
-			const bool viewIG = wEditor.Call(SCI_GETINDENTATIONGUIDES, 0, 0) == 0;
-			wEditor.Call(SCI_SETINDENTATIONGUIDES, viewIG ? indentExamine : SC_IV_NONE);
+			const bool viewIG = wEditor_.Call(SCI_GETINDENTATIONGUIDES, 0, 0) == 0;
+			wEditor_.Call(SCI_SETINDENTATIONGUIDES, viewIG ? indentExamine : SC_IV_NONE);
 			CheckMenus();
 			Redraw();
 		}
@@ -3559,32 +3559,32 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 
 	case IDM_OPENLOCALPROPERTIES:
 		OpenProperties(IDM_OPENLOCALPROPERTIES);
-		WindowSetFocus(wEditor);
+		WindowSetFocus(wEditor_);
 		break;
 
 	case IDM_OPENUSERPROPERTIES:
 		OpenProperties(IDM_OPENUSERPROPERTIES);
-		WindowSetFocus(wEditor);
+		WindowSetFocus(wEditor_);
 		break;
 
 	case IDM_OPENGLOBALPROPERTIES:
 		OpenProperties(IDM_OPENGLOBALPROPERTIES);
-		WindowSetFocus(wEditor);
+		WindowSetFocus(wEditor_);
 		break;
 
 	case IDM_OPENABBREVPROPERTIES:
 		OpenProperties(IDM_OPENABBREVPROPERTIES);
-		WindowSetFocus(wEditor);
+		WindowSetFocus(wEditor_);
 		break;
 
 	case IDM_OPENLUAEXTERNALFILE:
 		OpenProperties(IDM_OPENLUAEXTERNALFILE);
-		WindowSetFocus(wEditor);
+		WindowSetFocus(wEditor_);
 		break;
 
 	case IDM_OPENDIRECTORYPROPERTIES:
 		OpenProperties(IDM_OPENDIRECTORYPROPERTIES);
-		WindowSetFocus(wEditor);
+		WindowSetFocus(wEditor_);
 		break;
 
 	case IDM_SRCWIN:
@@ -3611,7 +3611,7 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 		break;
 
 	case IDM_BOOKMARK_CLEARALL:
-		wEditor.Call(SCI_MARKERDELETEALL, kMarkerBookmark);
+		wEditor_.Call(SCI_MARKERDELETEALL, kMarkerBookmark);
 		RemoveFindMarks();
 		break;
 
@@ -3694,50 +3694,50 @@ void CuteTextBase::FoldChanged(int line, int levelNow, int levelPrev) {
 	if (levelNow & SC_FOLDLEVELHEADERFLAG) {
 		if (!(levelPrev & SC_FOLDLEVELHEADERFLAG)) {
 			// Adding a fold point.
-			wEditor.Call(SCI_SETFOLDEXPANDED, line, 1);
-			if (!wEditor.Call(SCI_GETALLLINESVISIBLE))
+			wEditor_.Call(SCI_SETFOLDEXPANDED, line, 1);
+			if (!wEditor_.Call(SCI_GETALLLINESVISIBLE))
 				ExpandFolds(line, true, levelPrev);
 		}
 	} else if (levelPrev & SC_FOLDLEVELHEADERFLAG) {
 		const int prevLine = line - 1;
-		const int levelPrevLine = wEditor.Call(SCI_GETFOLDLEVEL, prevLine);
+		const int levelPrevLine = wEditor_.Call(SCI_GETFOLDLEVEL, prevLine);
 
 		// Combining two blocks where the first block is collapsed (e.g. by deleting the line(s) which separate(s) the two blocks)
-		if ((LevelNumber(levelPrevLine) == LevelNumber(levelNow)) && !wEditor.Call(SCI_GETLINEVISIBLE, prevLine)) {
-			const int parentLine = wEditor.Call(SCI_GETFOLDPARENT, prevLine);
-			const int levelParentLine = wEditor.Call(SCI_GETFOLDLEVEL, parentLine);
-			wEditor.Call(SCI_SETFOLDEXPANDED, parentLine, 1);
+		if ((LevelNumber(levelPrevLine) == LevelNumber(levelNow)) && !wEditor_.Call(SCI_GETLINEVISIBLE, prevLine)) {
+			const int parentLine = wEditor_.Call(SCI_GETFOLDPARENT, prevLine);
+			const int levelParentLine = wEditor_.Call(SCI_GETFOLDLEVEL, parentLine);
+			wEditor_.Call(SCI_SETFOLDEXPANDED, parentLine, 1);
 			ExpandFolds(parentLine, true, levelParentLine);
 		}
 
-		if (!wEditor.Call(SCI_GETFOLDEXPANDED, line)) {
+		if (!wEditor_.Call(SCI_GETFOLDEXPANDED, line)) {
 			// Removing the fold from one that has been contracted so should expand
 			// otherwise lines are left invisible with no way to make them visible
-			wEditor.Call(SCI_SETFOLDEXPANDED, line, 1);
-			if (!wEditor.Call(SCI_GETALLLINESVISIBLE))
+			wEditor_.Call(SCI_SETFOLDEXPANDED, line, 1);
+			if (!wEditor_.Call(SCI_GETALLLINESVISIBLE))
 				// Combining two blocks where the second one is collapsed (e.g. by adding characters in the line which separates the two blocks)
 				ExpandFolds(line, true, levelPrev);
 		}
 	}
 	if (!(levelNow & SC_FOLDLEVELWHITEFLAG) &&
 	        (LevelNumber(levelPrev) > LevelNumber(levelNow))) {
-		if (!wEditor.Call(SCI_GETALLLINESVISIBLE)) {
+		if (!wEditor_.Call(SCI_GETALLLINESVISIBLE)) {
 			// See if should still be hidden
-			const int parentLine = wEditor.Call(SCI_GETFOLDPARENT, line);
+			const int parentLine = wEditor_.Call(SCI_GETFOLDPARENT, line);
 			if (parentLine < 0) {
-				wEditor.Call(SCI_SHOWLINES, line, line);
-			} else if (wEditor.Call(SCI_GETFOLDEXPANDED, parentLine) && wEditor.Call(SCI_GETLINEVISIBLE, parentLine)) {
-				wEditor.Call(SCI_SHOWLINES, line, line);
+				wEditor_.Call(SCI_SHOWLINES, line, line);
+			} else if (wEditor_.Call(SCI_GETFOLDEXPANDED, parentLine) && wEditor_.Call(SCI_GETLINEVISIBLE, parentLine)) {
+				wEditor_.Call(SCI_SHOWLINES, line, line);
 			}
 		}
 	}
 	// Combining two blocks where the first one is collapsed (e.g. by adding characters in the line which separates the two blocks)
 	if (!(levelNow & SC_FOLDLEVELWHITEFLAG) && (LevelNumber(levelPrev) < LevelNumber(levelNow))) {
-		if (!wEditor.Call(SCI_GETALLLINESVISIBLE)) {
-			const int parentLine = wEditor.Call(SCI_GETFOLDPARENT, line);
-			if (!wEditor.Call(SCI_GETFOLDEXPANDED, parentLine) && wEditor.Call(SCI_GETLINEVISIBLE, line)) {
-				wEditor.Call(SCI_SETFOLDEXPANDED, parentLine, 1);
-				const int levelParentLine = wEditor.Call(SCI_GETFOLDLEVEL, parentLine);
+		if (!wEditor_.Call(SCI_GETALLLINESVISIBLE)) {
+			const int parentLine = wEditor_.Call(SCI_GETFOLDPARENT, line);
+			if (!wEditor_.Call(SCI_GETFOLDEXPANDED, parentLine) && wEditor_.Call(SCI_GETLINEVISIBLE, line)) {
+				wEditor_.Call(SCI_SETFOLDEXPANDED, parentLine, 1);
+				const int levelParentLine = wEditor_.Call(SCI_GETFOLDLEVEL, parentLine);
 				ExpandFolds(parentLine, true, levelParentLine);
 			}
 		}
@@ -3747,49 +3747,49 @@ void CuteTextBase::FoldChanged(int line, int levelNow, int levelPrev) {
 void CuteTextBase::ExpandFolds(int line, bool expand, int level) {
 	// Expand or contract line and all subordinates
 	// level is the fold level of line
-	const int lineMaxSubord = wEditor.Call(SCI_GETLASTCHILD, line, LevelNumber(level));
+	const int lineMaxSubord = wEditor_.Call(SCI_GETLASTCHILD, line, LevelNumber(level));
 	line++;
-	wEditor.Call(expand ? SCI_SHOWLINES : SCI_HIDELINES, line, lineMaxSubord);
+	wEditor_.Call(expand ? SCI_SHOWLINES : SCI_HIDELINES, line, lineMaxSubord);
 	while (line <= lineMaxSubord) {
-		const int levelLine = wEditor.Call(SCI_GETFOLDLEVEL, line);
+		const int levelLine = wEditor_.Call(SCI_GETFOLDLEVEL, line);
 		if (levelLine & SC_FOLDLEVELHEADERFLAG) {
-			wEditor.Call(SCI_SETFOLDEXPANDED, line, expand ? 1 : 0);
+			wEditor_.Call(SCI_SETFOLDEXPANDED, line, expand ? 1 : 0);
 		}
 		line++;
 	}
 }
 
 void CuteTextBase::FoldAll() {
-	wEditor.Call(SCI_COLOURISE, 0, -1);
-	const int maxLine = wEditor.Call(SCI_GETLINECOUNT);
+	wEditor_.Call(SCI_COLOURISE, 0, -1);
+	const int maxLine = wEditor_.Call(SCI_GETLINECOUNT);
 	bool expanding = true;
 	for (int lineSeek = 0; lineSeek < maxLine; lineSeek++) {
-		if (wEditor.Call(SCI_GETFOLDLEVEL, lineSeek) & SC_FOLDLEVELHEADERFLAG) {
-			expanding = !wEditor.Call(SCI_GETFOLDEXPANDED, lineSeek);
+		if (wEditor_.Call(SCI_GETFOLDLEVEL, lineSeek) & SC_FOLDLEVELHEADERFLAG) {
+			expanding = !wEditor_.Call(SCI_GETFOLDEXPANDED, lineSeek);
 			break;
 		}
 	}
 	for (int line = 0; line < maxLine; line++) {
-		const int level = wEditor.Call(SCI_GETFOLDLEVEL, line);
+		const int level = wEditor_.Call(SCI_GETFOLDLEVEL, line);
 		if ((level & SC_FOLDLEVELHEADERFLAG) &&
 		        (SC_FOLDLEVELBASE == LevelNumber(level))) {
-			const int lineMaxSubord = wEditor.Call(SCI_GETLASTCHILD, line, -1);
+			const int lineMaxSubord = wEditor_.Call(SCI_GETLASTCHILD, line, -1);
 			if (expanding) {
-				wEditor.Call(SCI_SETFOLDEXPANDED, line, 1);
+				wEditor_.Call(SCI_SETFOLDEXPANDED, line, 1);
 				ExpandFolds(line, true, level);
 				line = lineMaxSubord;
 			} else {
-				wEditor.Call(SCI_SETFOLDEXPANDED, line, 0);
+				wEditor_.Call(SCI_SETFOLDEXPANDED, line, 0);
 				if (lineMaxSubord > line)
-					wEditor.Call(SCI_HIDELINES, line + 1, lineMaxSubord);
+					wEditor_.Call(SCI_HIDELINES, line + 1, lineMaxSubord);
 			}
 		}
 	}
 }
 
 void CuteTextBase::GotoLineEnsureVisible(int line) {
-	wEditor.Call(SCI_ENSUREVISIBLEENFORCEPOLICY, line);
-	wEditor.Call(SCI_GOTOLINE, line);
+	wEditor_.Call(SCI_ENSUREVISIBLEENFORCEPOLICY, line);
+	wEditor_.Call(SCI_GOTOLINE, line);
 }
 
 void CuteTextBase::EnsureRangeVisible(GUI::ScintillaWindow &win, int posStart, int posEnd, bool enforcePolicy) {
@@ -3801,11 +3801,11 @@ void CuteTextBase::EnsureRangeVisible(GUI::ScintillaWindow &win, int posStart, i
 }
 
 bool CuteTextBase::MarginClick(int position, int modifiers) {
-	const int lineClick = wEditor.Call(SCI_LINEFROMPOSITION, position);
+	const int lineClick = wEditor_.Call(SCI_LINEFROMPOSITION, position);
 	if ((modifiers & SCMOD_SHIFT) && (modifiers & SCMOD_CTRL)) {
 		FoldAll();
 	} else {
-		const int levelClick = wEditor.Call(SCI_GETFOLDLEVEL, lineClick);
+		const int levelClick = wEditor_.Call(SCI_GETFOLDLEVEL, lineClick);
 		if (levelClick & SC_FOLDLEVELHEADERFLAG) {
 			if (modifiers & SCMOD_SHIFT) {
 				EnsureAllChildrenVisible(lineClick, levelClick);
@@ -3813,7 +3813,7 @@ bool CuteTextBase::MarginClick(int position, int modifiers) {
 				ToggleFoldRecursive(lineClick, levelClick);
 			} else {
 				// Toggle this line
-				wEditor.Call(SCI_TOGGLEFOLD, lineClick);
+				wEditor_.Call(SCI_TOGGLEFOLD, lineClick);
 			}
 		}
 	}
@@ -3821,36 +3821,36 @@ bool CuteTextBase::MarginClick(int position, int modifiers) {
 }
 
 void CuteTextBase::ToggleFoldRecursive(int line, int level) {
-	if (wEditor.Call(SCI_GETFOLDEXPANDED, line)) {
+	if (wEditor_.Call(SCI_GETFOLDEXPANDED, line)) {
 		// This ensure fold structure created before the fold is expanded
-		wEditor.Call(SCI_GETLASTCHILD, line, LevelNumber(level));
+		wEditor_.Call(SCI_GETLASTCHILD, line, LevelNumber(level));
 		// Contract this line and all children
-		wEditor.Call(SCI_SETFOLDEXPANDED, line, 0);
+		wEditor_.Call(SCI_SETFOLDEXPANDED, line, 0);
 		ExpandFolds(line, false, level);
 	} else {
 		// Expand this line and all children
-		wEditor.Call(SCI_SETFOLDEXPANDED, line, 1);
+		wEditor_.Call(SCI_SETFOLDEXPANDED, line, 1);
 		ExpandFolds(line, true, level);
 	}
 }
 
 void CuteTextBase::EnsureAllChildrenVisible(int line, int level) {
 	// Ensure all children visible
-	wEditor.Call(SCI_SETFOLDEXPANDED, line, 1);
+	wEditor_.Call(SCI_SETFOLDEXPANDED, line, 1);
 	ExpandFolds(line, true, level);
 }
 
 void CuteTextBase::NewLineInOutput() {
 	if (jobQueue.IsExecuting())
 		return;
-	int line = wOutput.Call(SCI_LINEFROMPOSITION,
-	        wOutput.Call(SCI_GETCURRENTPOS)) - 1;
-	std::string cmd = GetLine(wOutput, line);
+	int line = wOutput_.Call(SCI_LINEFROMPOSITION,
+	        wOutput_.Call(SCI_GETCURRENTPOS)) - 1;
+	std::string cmd = GetLine(wOutput_, line);
 	if (cmd == ">") {
 		// Search output buffer for previous command
 		line--;
 		while (line >= 0) {
-			cmd = GetLine(wOutput, line);
+			cmd = GetLine(wOutput_, line);
 			if (StartsWith(cmd, ">") && !StartsWith(cmd, ">Exit")) {
 				cmd = cmd.substr(1);
 				break;
@@ -3869,7 +3869,7 @@ void CuteTextBase::Notify(SCNotification *notification) {
 	bool handled = false;
 	switch (notification->nmhdr.code) {
 	case SCN_PAINTED:
-		if ((notification->nmhdr.idFrom == IDM_SRCWIN) == (pwFocussed == &wEditor)) {
+		if ((notification->nmhdr.idFrom == IDM_SRCWIN) == (pwFocussed == &wEditor_)) {
 			// Obly highlight focussed pane.
 			// Manage delay before highlight when no user selection but there is word at the caret.
 			// So the Delay is based on the blinking of caret, scroll...
@@ -3898,10 +3898,10 @@ void CuteTextBase::Notify(SCNotification *notification) {
 			if (extender) {
 				// Colourisation may be performed by script
 				if ((notification->nmhdr.idFrom == IDM_SRCWIN) && (lexLanguage == SCLEX_CONTAINER)) {
-					int endStyled = wEditor.Call(SCI_GETENDSTYLED);
-					const int lineEndStyled = wEditor.Call(SCI_LINEFROMPOSITION, endStyled);
-					endStyled = wEditor.Call(SCI_POSITIONFROMLINE, lineEndStyled);
-					StyleWriter styler(wEditor);
+					int endStyled = wEditor_.Call(SCI_GETENDSTYLED);
+					const int lineEndStyled = wEditor_.Call(SCI_LINEFROMPOSITION, endStyled);
+					endStyled = wEditor_.Call(SCI_POSITIONFROMLINE, lineEndStyled);
+					StyleWriter styler(wEditor_);
 					int styleStart = 0;
 					if (endStyled > 0)
 						styleStart = styler.StyleAt(endStyled - 1);
@@ -3975,7 +3975,7 @@ void CuteTextBase::Notify(SCNotification *notification) {
 			RemoveFindMarks();
 		}
 		if (notification->updated & (SC_UPDATE_SELECTION | SC_UPDATE_CONTENT)) {
-			if ((notification->nmhdr.idFrom == IDM_SRCWIN) == (pwFocussed == &wEditor)) {
+			if ((notification->nmhdr.idFrom == IDM_SRCWIN) == (pwFocussed == &wEditor_)) {
 				// Obly highlight focussed pane.
 				if (notification->updated & SC_UPDATE_SELECTION) {
 					currentWordHighlight.statesOfDelay = currentWordHighlight.kNoDelay; // Selection has just been updated, so delay is disabled.
@@ -4001,7 +4001,7 @@ void CuteTextBase::Notify(SCNotification *notification) {
 			EnableAMenuItem(IDM_UNDO, CallFocusedElseDefault(true, SCI_CANUNDO));
 			EnableAMenuItem(IDM_REDO, CallFocusedElseDefault(true, SCI_CANREDO));
 		} else if (notification->modificationType & (SC_MOD_INSERTTEXT | SC_MOD_DELETETEXT)) {
-			if ((notification->nmhdr.idFrom == IDM_SRCWIN) == (pwFocussed == &wEditor)) {
+			if ((notification->nmhdr.idFrom == IDM_SRCWIN) == (pwFocussed == &wEditor_)) {
 				currentWordHighlight.textHasChanged = true;
 			}
 			//this will be called a lot, and usually means "typing".
@@ -4033,7 +4033,7 @@ void CuteTextBase::Notify(SCNotification *notification) {
 		break;
 
 	case SCN_NEEDSHOWN: {
-			EnsureRangeVisible(wEditor, static_cast<int>(notification->position), static_cast<int>(notification->position + notification->length), false);
+			EnsureRangeVisible(wEditor_, static_cast<int>(notification->position), static_cast<int>(notification->position + notification->length), false);
 		}
 		break;
 
@@ -4069,7 +4069,7 @@ void CuteTextBase::Notify(SCNotification *notification) {
 			int endWord = static_cast<int>(notification->position);
 			int position = static_cast<int>(notification->position);
 			std::string message =
-				RangeExtendAndGrab(wEditor,
+				RangeExtendAndGrab(wEditor_,
 					position, endWord, &CuteTextBase::iswordcharforsel);
 			if (message.length()) {
 				extender->OnDwellStart(position, message.c_str());
@@ -4119,9 +4119,9 @@ void CuteTextBase::CheckMenus() {
 	CheckAMenuItem(IDM_VIEWTOOLBAR, tbVisible);
 	CheckAMenuItem(IDM_VIEWTABBAR, tabVisible);
 	CheckAMenuItem(IDM_VIEWSTATUSBAR, sbVisible);
-	CheckAMenuItem(IDM_VIEWEOL, wEditor.Call(SCI_GETVIEWEOL));
-	CheckAMenuItem(IDM_VIEWSPACE, wEditor.Call(SCI_GETVIEWWS));
-	CheckAMenuItem(IDM_VIEWGUIDES, wEditor.Call(SCI_GETINDENTATIONGUIDES));
+	CheckAMenuItem(IDM_VIEWEOL, wEditor_.Call(SCI_GETVIEWEOL));
+	CheckAMenuItem(IDM_VIEWSPACE, wEditor_.Call(SCI_GETVIEWWS));
+	CheckAMenuItem(IDM_VIEWGUIDES, wEditor_.Call(SCI_GETINDENTATIONGUIDES));
 	CheckAMenuItem(IDM_LINENUMBERMARGIN, lineNumbers);
 	CheckAMenuItem(IDM_SELMARGIN, margin);
 	CheckAMenuItem(IDM_FOLDMARGIN, foldMargin);
@@ -4166,7 +4166,7 @@ void CuteTextBase::ContextMenu(GUI::ScintillaWindow &wSource, GUI::Point pt, GUI
 	AddToPopUp("");
 	AddToPopUp("Select All", IDM_SELECTALL);
 	AddToPopUp("");
-	if (wSource.GetID() == wOutput.GetID()) {
+	if (wSource.GetID() == wOutput_.GetID()) {
 		AddToPopUp("Hide", IDM_TOGGLEOUTPUT, true);
 	} else {
 		AddToPopUp("Close", IDM_CLOSE, true);
@@ -4298,7 +4298,7 @@ void CuteTextBase::PerformOne(char *action) {
 			PropertyToDirector(arg);
 		} else if (isprefix(action, "close:")) {
 			Close();
-			WindowSetFocus(wEditor);
+			WindowSetFocus(wEditor_);
 		} else if (isprefix(action, "currentmacro:")) {
 			currentMacro = arg;
 		} else if (isprefix(action, "cwd:")) {
@@ -4319,10 +4319,10 @@ void CuteTextBase::PerformOne(char *action) {
 			SaveToTEX(GUI::StringFromUTF8(arg));
 		} else if (isprefix(action, "exportasxml:")) {
 			SaveToXML(GUI::StringFromUTF8(arg));
-		} else if (isprefix(action, "find:") && wEditor.Created()) {
+		} else if (isprefix(action, "find:") && wEditor_.Created()) {
 			findWhat = arg;
 			FindNext(false, false);
-		} else if (isprefix(action, "goto:") && wEditor.Created()) {
+		} else if (isprefix(action, "goto:") && wEditor_.Created()) {
 			const int line = atoi(arg) - 1;
 			GotoLineEnsureVisible(line);
 			// jump to column if given and greater than 0
@@ -4330,15 +4330,15 @@ void CuteTextBase::PerformOne(char *action) {
 			if (colstr != NULL) {
 				const int col = atoi(colstr + 1);
 				if (col > 0) {
-					const int pos = wEditor.Call(SCI_GETCURRENTPOS) + col;
+					const int pos = wEditor_.Call(SCI_GETCURRENTPOS) + col;
 					// select the word you have found there
-					const int wordStart = wEditor.Call(SCI_WORDSTARTPOSITION, pos, true);
-					const int wordEnd = wEditor.Call(SCI_WORDENDPOSITION, pos, true);
-					wEditor.Call(SCI_SETSEL, wordStart, wordEnd);
+					const int wordStart = wEditor_.Call(SCI_WORDSTARTPOSITION, pos, true);
+					const int wordEnd = wEditor_.Call(SCI_WORDENDPOSITION, pos, true);
+					wEditor_.Call(SCI_SETSEL, wordStart, wordEnd);
 				}
 			}
-		} else if (isprefix(action, "insert:") && wEditor.Created()) {
-			wEditor.CallString(SCI_REPLACESEL, 0, arg);
+		} else if (isprefix(action, "insert:") && wEditor_.Created()) {
+			wEditor_.CallString(SCI_REPLACESEL, 0, arg);
 		} else if (isprefix(action, "loadsession:")) {
 			if (*arg) {
 				LoadSessionFile(GUI::StringFromUTF8(arg).c_str());
@@ -4355,15 +4355,15 @@ void CuteTextBase::PerformOne(char *action) {
 			MenuCommand(atoi(arg));
 		} else if (isprefix(action, "open:")) {
 			Open(GUI::StringFromUTF8(arg), kOfSynchronous);
-		} else if (isprefix(action, "output:") && wOutput.Created()) {
-			wOutput.CallString(SCI_REPLACESEL, 0, arg);
+		} else if (isprefix(action, "output:") && wOutput_.Created()) {
+			wOutput_.CallString(SCI_REPLACESEL, 0, arg);
 		} else if (isprefix(action, "property:")) {
 			PropertyFromDirector(arg);
 		} else if (isprefix(action, "reloadproperties:")) {
 			ReloadProperties();
 		} else if (isprefix(action, "quit:")) {
 			QuitProgram();
-		} else if (isprefix(action, "replaceall:") && wEditor.Created()) {
+		} else if (isprefix(action, "replaceall:") && wEditor_.Created()) {
 			if (len > strlen(action)) {
 				const char *arg2 = arg + strlen(arg) + 1;
 				findWhat = arg;
@@ -4458,7 +4458,7 @@ void CuteTextBase::PropertyToDirector(const char *arg) {
 void CuteTextBase::StartRecordMacro() {
 	recording = true;
 	CheckMenus();
-	wEditor.Call(SCI_STARTRECORD);
+	wEditor_.Call(SCI_STARTRECORD);
 }
 
 /**
@@ -4489,7 +4489,7 @@ bool CuteTextBase::RecordMacroCommand(const SCNotification *notification) {
  * Menu/Toolbar command "Stop recording".
  */
 void CuteTextBase::StopRecordMacro() {
-	wEditor.Call(SCI_STOPRECORD);
+	wEditor_.Call(SCI_STOPRECORD);
 	if (extender)
 		extender->OnMacro("macro:stoprecord", "");
 	recording = false;
@@ -4510,7 +4510,7 @@ void CuteTextBase::AskMacroList() {
  */
 bool CuteTextBase::StartMacroList(const char *words) {
 	if (words) {
-		wEditor.CallString(SCI_USERLISTSHOW, 2, words); //listtype=2
+		wEditor_.CallString(SCI_USERLISTSHOW, 2, words); //listtype=2
 	}
 
 	return true;
@@ -4595,24 +4595,24 @@ void CuteTextBase::ExecuteMacroCommand(const char *command) {
 
 	if (*params == '0') {
 		// no answer ...
-		wEditor.Call(message, wParam, lParam);
+		wEditor_.Call(message, wParam, lParam);
 		return;
 	}
 
 	if (*params == 'S') {
 		// string answer
 		if (message == SCI_GETSELTEXT) {
-			l = wEditor.Call(SCI_GETSELTEXT, 0, 0);
+			l = wEditor_.Call(SCI_GETSELTEXT, 0, 0);
 			wParam = 0;
 		} else if (message == SCI_GETCURLINE) {
-			const int line = wEditor.Call(SCI_LINEFROMPOSITION, wEditor.Call(SCI_GETCURRENTPOS));
-			l = wEditor.Call(SCI_LINELENGTH, line);
+			const int line = wEditor_.Call(SCI_LINEFROMPOSITION, wEditor_.Call(SCI_GETCURRENTPOS));
+			l = wEditor_.Call(SCI_LINELENGTH, line);
 			wParam = l;
 		} else if (message == SCI_GETTEXT) {
-			l = wEditor.Call(SCI_GETLENGTH);
+			l = wEditor_.Call(SCI_GETLENGTH);
 			wParam = l;
 		} else if (message == SCI_GETLINE) {
-			l = wEditor.Call(SCI_LINELENGTH, wParam);
+			l = wEditor_.Call(SCI_LINELENGTH, wParam);
 		} else {
 			l = 0; //unsupported calls EM
 		}
@@ -4631,7 +4631,7 @@ void CuteTextBase::ExecuteMacroCommand(const char *command) {
 		lParam = SptrFromPointer(&tbuff[alen]);
 
 	if (l > 0)
-		rep = wEditor.Call(message, wParam, lParam);
+		rep = wEditor_.Call(message, wParam, lParam);
 	if (*params == 'I')
 		sprintf(&tbuff[alen], "%0d", rep);
 	extender->OnMacro("macro", tbuff.c_str());
@@ -4740,32 +4740,32 @@ bool CuteTextBase::ProcessCommandLine(const GUI::gui_string &args, int phase) {
 // Implement ExtensionAPI methods
 sptr_t CuteTextBase::Send(Pane p, unsigned int msg, uptr_t wParam, sptr_t lParam) {
 	if (p == paneEditor)
-		return wEditor.Call(msg, wParam, lParam);
+		return wEditor_.Call(msg, wParam, lParam);
 	else
-		return wOutput.Call(msg, wParam, lParam);
+		return wOutput_.Call(msg, wParam, lParam);
 }
 std::string CuteTextBase::Range(Pane p, int start, int end) {
 	const int len = end - start;
 	std::string s(len, '\0');
 	if (p == paneEditor)
-		GetRange(wEditor, start, end, s.data());
+		GetRange(wEditor_, start, end, s.data());
 	else
-		GetRange(wOutput, start, end, s.data());
+		GetRange(wOutput_, start, end, s.data());
 	return s;
 }
 void CuteTextBase::Remove(Pane p, int start, int end) {
 	if (p == paneEditor) {
-		wEditor.Call(SCI_DELETERANGE, start, end-start);
+		wEditor_.Call(SCI_DELETERANGE, start, end-start);
 	} else {
-		wOutput.Call(SCI_DELETERANGE, start, end-start);
+		wOutput_.Call(SCI_DELETERANGE, start, end-start);
 	}
 }
 
 void CuteTextBase::Insert(Pane p, int pos, const char *s) {
 	if (p == paneEditor)
-		wEditor.CallString(SCI_INSERTTEXT, pos, s);
+		wEditor_.CallString(SCI_INSERTTEXT, pos, s);
 	else
-		wOutput.CallString(SCI_INSERTTEXT, pos, s);
+		wOutput_.CallString(SCI_INSERTTEXT, pos, s);
 }
 
 void CuteTextBase::Trace(const char *s) {

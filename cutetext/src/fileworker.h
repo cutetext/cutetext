@@ -65,8 +65,8 @@ public:
 };
 
 enum {
-	WORK_FILEREAD = 1,
-	WORK_FILEWRITTEN = 2,
-	WORK_FILEPROGRESS = 3,
-	WORK_PLATFORM = 100
+	kWorkFileRead = 1,
+	kWorkFileWritten = 2,
+	kWorkFileProgress = 3,
+	kWorkPlatform = 100
 };
