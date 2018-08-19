@@ -504,7 +504,7 @@ bool CuteTextBase::FindMatchingBracePosition(bool editor, int &braceAtCaret, int
 	if (win.Call(SCI_GETSELECTIONNCARETVIRTUALSPACE, mainSel, 0) > 0)
 		return false;
 
-	const int bracesStyleCheck = editor ? bracesStyle : 0;
+	const int bracesStyleCheck = editor ? bracesStyle_ : 0;
 	int caretPos = win.Call(SCI_GETCURRENTPOS, 0, 0);
 	braceAtCaret = -1;
 	braceOpposite = -1;
@@ -521,11 +521,11 @@ bool CuteTextBase::FindMatchingBracePosition(bool editor, int &braceAtCaret, int
 	}
 	// Priority goes to character before caret
 	if (charBefore && IsBrace(charBefore) &&
-	        ((styleBefore == bracesStyleCheck) || (!bracesStyle))) {
+	        ((styleBefore == bracesStyleCheck) || (!bracesStyle_))) {
 		braceAtCaret = caretPos - 1;
 	}
 	bool colonMode = false;
-	if ((lexLanguage == SCLEX_PYTHON) &&
+	if ((lexLanguage_ == SCLEX_PYTHON) &&
 	        (':' == charBefore) && (SCE_P_OPERATOR == styleBefore)) {
 		braceAtCaret = caretPos - 1;
 		colonMode = true;
@@ -537,11 +537,11 @@ bool CuteTextBase::FindMatchingBracePosition(bool editor, int &braceAtCaret, int
 		if (win.Call(SCI_POSITIONAFTER, caretPos) == (caretPos + 1)) {
 			const char charAfter = acc[caretPos];
 			const int styleAfter = acc.StyleAt(caretPos);
-			if (charAfter && IsBrace(charAfter) && ((styleAfter == bracesStyleCheck) || (!bracesStyle))) {
+			if (charAfter && IsBrace(charAfter) && ((styleAfter == bracesStyleCheck) || (!bracesStyle_))) {
 				braceAtCaret = caretPos;
 				isAfter = false;
 			}
-			if ((lexLanguage == SCLEX_PYTHON) &&
+			if ((lexLanguage_ == SCLEX_PYTHON) &&
 			        (':' == charAfter) && (SCE_P_OPERATOR == styleAfter)) {
 				braceAtCaret = caretPos;
 				colonMode = true;
@@ -608,38 +608,38 @@ void CuteTextBase::BraceMatch(bool editor) {
 }
 
 void CuteTextBase::SetWindowName() {
-	if (filePath.IsUntitled()) {
-		windowName = localiser.Text("Untitled");
-		windowName.insert(0, GUI_TEXT("("));
-		windowName += GUI_TEXT(")");
+	if (filePath_.IsUntitled()) {
+		windowName_ = localiser.Text("Untitled");
+		windowName_.insert(0, GUI_TEXT("("));
+		windowName_ += GUI_TEXT(")");
 	} else if (props.GetInt("title.full.path") == 2) {
-		windowName = FileNameExt().AsInternal();
-		windowName += GUI_TEXT(" ");
-		windowName += localiser.Text("in");
-		windowName += GUI_TEXT(" ");
-		windowName += filePath.Directory().AsInternal();
+		windowName_ = FileNameExt().AsInternal();
+		windowName_ += GUI_TEXT(" ");
+		windowName_ += localiser.Text("in");
+		windowName_ += GUI_TEXT(" ");
+		windowName_ += filePath_.Directory().AsInternal();
 	} else if (props.GetInt("title.full.path") == 1) {
-		windowName = filePath.AsInternal();
+		windowName_ = filePath_.AsInternal();
 	} else {
-		windowName = FileNameExt().AsInternal();
+		windowName_ = FileNameExt().AsInternal();
 	}
 	if (CurrentBufferConst()->isDirty)
-		windowName += GUI_TEXT(" * ");
+		windowName_ += GUI_TEXT(" * ");
 	else
-		windowName += GUI_TEXT(" - ");
-	windowName += appName;
+		windowName_ += GUI_TEXT(" - ");
+	windowName_ += appName;
 
 	if (buffers.length > 1 && props.GetInt("title.show.buffers")) {
-		windowName += GUI_TEXT(" [");
-		windowName += GUI::StringFromInteger(buffers.Current() + 1);
-		windowName += GUI_TEXT(" ");
-		windowName += localiser.Text("of");
-		windowName += GUI_TEXT(" ");
-		windowName += GUI::StringFromInteger(buffers.length);
-		windowName += GUI_TEXT("]");
+		windowName_ += GUI_TEXT(" [");
+		windowName_ += GUI::StringFromInteger(buffers.Current() + 1);
+		windowName_ += GUI_TEXT(" ");
+		windowName_ += localiser.Text("of");
+		windowName_ += GUI_TEXT(" ");
+		windowName_ += GUI::StringFromInteger(buffers.length);
+		windowName_ += GUI_TEXT("]");
 	}
 
-	wCuteText_.SetTitle(windowName.c_str());
+	wCuteText_.SetTitle(windowName_.c_str());
 }
 
 Sci_CharacterRange CuteTextBase::GetSelection() {
@@ -1331,18 +1331,18 @@ void CuteTextBase::OutputAppendStringSynchronised(const char *s, int len) {
 
 void CuteTextBase::Execute() {
 	props.Set("CurrentMessage", "");
-	dirNameForExecute = FilePath();
+	dirNameForExecute_ = FilePath();
 	bool displayParameterDialog = false;
 	int ic;
-	parameterisedCommand = "";
+	parameterisedCommand_ = "";
 	for (ic = 0; ic < jobQueue.commandMax; ic++) {
 		if (StartsWith(jobQueue.jobQueue[ic].command, "*")) {
 			displayParameterDialog = true;
 			jobQueue.jobQueue[ic].command.erase(0, 1);
-			parameterisedCommand = jobQueue.jobQueue[ic].command;
+			parameterisedCommand_ = jobQueue.jobQueue[ic].command;
 		}
 		if (jobQueue.jobQueue[ic].directory.IsSet()) {
-			dirNameForExecute = jobQueue.jobQueue[ic].directory;
+			dirNameForExecute_ = jobQueue.jobQueue[ic].directory;
 		}
 	}
 	if (displayParameterDialog) {
@@ -1375,7 +1375,7 @@ void CuteTextBase::Execute() {
 		jobQueue.SetExecuting(true);
 	}
 	CheckMenus();
-	dirNameAtExecute = filePath.Directory();
+	dirNameAtExecute_ = filePath_.Directory();
 }
 
 void CuteTextBase::SetOutputVisibility(bool show) {
@@ -1488,7 +1488,7 @@ void CuteTextBase::BookmarkSelectAll() {
 }
 
 GUI::Rectangle CuteTextBase::GetClientRectangle() {
-	return wContent.GetClientPosition();
+	return wContent_.GetClientPosition();
 }
 
 void CuteTextBase::Redraw() {
@@ -1501,7 +1501,7 @@ std::string CuteTextBase::GetNearestWords(const char *wordStart, size_t searchLe
 		const char *separators, bool ignoreCase /*=false*/, bool exactLen /*=false*/) {
 	std::string words;
 	while (words.empty() && *separators) {
-		words = apis.GetNearestWords(wordStart, searchLen, ignoreCase, *separators, exactLen);
+		words = apis_.GetNearestWords(wordStart, searchLen, ignoreCase, *separators, exactLen);
 		separators++;
 	}
 	return words;
@@ -1511,7 +1511,7 @@ void CuteTextBase::FillFunctionDefinition(int pos /*= -1*/) {
 	if (pos > 0) {
 		lastPosCallTip = pos;
 	}
-	if (apis) {
+	if (apis_) {
 		std::string words = GetNearestWords(currentCallTipWord.c_str(), currentCallTipWord.length(),
 			calltipParametersStart.c_str(), callTipIgnoreCase, true);
 		if (words.empty())
@@ -1520,36 +1520,36 @@ void CuteTextBase::FillFunctionDefinition(int pos /*= -1*/) {
 		maxCallTips = static_cast<int>(std::count(words.begin(), words.end(), ' ') + 1);
 
 		// Should get current api definition
-		std::string word = apis.GetNearestWord(currentCallTipWord.c_str(), currentCallTipWord.length(),
+		std::string word = apis_.GetNearestWord(currentCallTipWord.c_str(), currentCallTipWord.length(),
 		        callTipIgnoreCase, calltipWordCharacters, currentCallTip);
 		if (word.length()) {
-			functionDefinition = word;
+			functionDefinition_ = word;
 			if (maxCallTips > 1) {
-				functionDefinition.insert(0, "\001");
+				functionDefinition_.insert(0, "\001");
 			}
 
 			if (calltipEndDefinition != "") {
-				const size_t posEndDef = functionDefinition.find(calltipEndDefinition.c_str());
+				const size_t posEndDef = functionDefinition_.find(calltipEndDefinition.c_str());
 				if (maxCallTips > 1) {
 					if (posEndDef != std::string::npos) {
-						functionDefinition.insert(posEndDef + calltipEndDefinition.length(), "\n\002");
+						functionDefinition_.insert(posEndDef + calltipEndDefinition.length(), "\n\002");
 					} else {
-						functionDefinition.append("\n\002");
+						functionDefinition_.append("\n\002");
 					}
 				} else {
 					if (posEndDef != std::string::npos) {
-						functionDefinition.insert(posEndDef + calltipEndDefinition.length(), "\n");
+						functionDefinition_.insert(posEndDef + calltipEndDefinition.length(), "\n");
 					}
 				}
 			} else if (maxCallTips > 1) {
-				functionDefinition.insert(1, "\002");
+				functionDefinition_.insert(1, "\002");
 			}
 
 			std::string definitionForDisplay;
 			if (callTipUseEscapes) {
-				definitionForDisplay = UnSlashString(functionDefinition.c_str());
+				definitionForDisplay = UnSlashString(functionDefinition_.c_str());
 			} else {
-				definitionForDisplay = functionDefinition;
+				definitionForDisplay = functionDefinition_;
 			}
 
 			wEditor_.CallString(SCI_CALLTIPSHOW, lastPosCallTip - currentCallTipWord.length(), definitionForDisplay.c_str());
@@ -1595,7 +1595,7 @@ bool CuteTextBase::StartCallTip() {
 
 	line.at(current) = '\0';
 	currentCallTipWord = line.c_str() + startCalltipWord;
-	functionDefinition = "";
+	functionDefinition_ = "";
 	FillFunctionDefinition(pos);
 	return true;
 }
@@ -1616,33 +1616,33 @@ void CuteTextBase::ContinueCallTip() {
 	}
 
 	size_t startHighlight = 0;
-	while ((startHighlight < functionDefinition.length()) && !Contains(calltipParametersStart, functionDefinition[startHighlight]))
+	while ((startHighlight < functionDefinition_.length()) && !Contains(calltipParametersStart, functionDefinition_[startHighlight]))
 		startHighlight++;
-	if ((startHighlight < functionDefinition.length()) && Contains(calltipParametersStart, functionDefinition[startHighlight]))
+	if ((startHighlight < functionDefinition_.length()) && Contains(calltipParametersStart, functionDefinition_[startHighlight]))
 		startHighlight++;
-	while ((startHighlight < functionDefinition.length()) && commas > 0) {
-		if (Contains(calltipParametersSeparators, functionDefinition[startHighlight]))
+	while ((startHighlight < functionDefinition_.length()) && commas > 0) {
+		if (Contains(calltipParametersSeparators, functionDefinition_[startHighlight]))
 			commas--;
 		// If it reached the end of the argument list it means that the user typed in more
 		// arguments than the ones listed in the calltip
-		if (Contains(calltipParametersEnd, functionDefinition[startHighlight]))
+		if (Contains(calltipParametersEnd, functionDefinition_[startHighlight]))
 			commas = 0;
 		else
 			startHighlight++;
 	}
-	if ((startHighlight < functionDefinition.length()) && Contains(calltipParametersSeparators, functionDefinition[startHighlight]))
+	if ((startHighlight < functionDefinition_.length()) && Contains(calltipParametersSeparators, functionDefinition_[startHighlight]))
 		startHighlight++;
 	size_t endHighlight = startHighlight;
-	while ((endHighlight < functionDefinition.length()) && !Contains(calltipParametersSeparators, functionDefinition[endHighlight]) && !Contains(calltipParametersEnd, functionDefinition[endHighlight]))
+	while ((endHighlight < functionDefinition_.length()) && !Contains(calltipParametersSeparators, functionDefinition_[endHighlight]) && !Contains(calltipParametersEnd, functionDefinition_[endHighlight]))
 		endHighlight++;
 	if (callTipUseEscapes) {
-		std::string sPreHighlight = functionDefinition.substr(0, startHighlight);
+		std::string sPreHighlight = functionDefinition_.substr(0, startHighlight);
 		std::vector<char> vPreHighlight(sPreHighlight.c_str(), sPreHighlight.c_str() + sPreHighlight.length() + 1);
 		const int unslashedStartHighlight = UnSlash(&vPreHighlight[0]);
 
 		int unslashedEndHighlight = unslashedStartHighlight;
 		if (startHighlight < endHighlight) {
-			std::string sHighlight = functionDefinition.substr(startHighlight, endHighlight - startHighlight);
+			std::string sHighlight = functionDefinition_.substr(startHighlight, endHighlight - startHighlight);
 			std::vector<char> vHighlight(sHighlight.c_str(), sHighlight.c_str() + sHighlight.length() + 1);
 			unslashedEndHighlight = unslashedStartHighlight + UnSlash(&vHighlight[0]);
 		}
@@ -1694,7 +1694,7 @@ bool CuteTextBase::StartAutoComplete() {
 	}
 
 	std::string root = line.substr(startword, current - startword);
-	if (apis) {
+	if (apis_) {
 		std::string words = GetNearestWords(root.c_str(), root.length(),
 			calltipParametersStart.c_str(), autoCompleteIgnoreCase);
 		if (words.length()) {
@@ -1786,7 +1786,7 @@ bool CuteTextBase::StartAutoCompleteWord(bool onlyOneWord) {
 }
 
 bool CuteTextBase::PerformInsertAbbreviation() {
-	const std::string data = propsAbbrev.GetString(abbrevInsert.c_str());
+	const std::string data = propsAbbrev.GetString(abbrevInsert_.c_str());
 	if (data.empty()) {
 		return true; // returning if expanded abbreviation is empty
 	}
@@ -2514,22 +2514,22 @@ static bool includes(const StyleAndWords &symbols, const std::string &value) {
 IndentationStatus CuteTextBase::GetIndentState(int line) {
 	// C like language indentation defined by braces and keywords
 	IndentationStatus indentState = kIsNone;
-	const std::vector<std::string> controlIndents = GetLinePartsInStyle(line, statementIndent);
+	const std::vector<std::string> controlIndents = GetLinePartsInStyle(line, statementIndent_);
 	for (const std::string &sIndent : controlIndents) {
-		if (includes(statementIndent, sIndent))
+		if (includes(statementIndent_, sIndent))
 			indentState = kIsKeyWordStart;
 	}
-	const std::vector<std::string> controlEnds = GetLinePartsInStyle(line, statementEnd);
+	const std::vector<std::string> controlEnds = GetLinePartsInStyle(line, statementEnd_);
 	for (const std::string &sEnd : controlEnds) {
-		if (includes(statementEnd, sEnd))
+		if (includes(statementEnd_, sEnd))
 			indentState = kIsNone;
 	}
 	// Braces override keywords
-	const std::vector<std::string> controlBlocks = GetLinePartsInStyle(line, blockEnd);
+	const std::vector<std::string> controlBlocks = GetLinePartsInStyle(line, blockEnd_);
 	for (const std::string &sBlock : controlBlocks) {
-		if (includes(blockEnd, sBlock))
+		if (includes(blockEnd_, sBlock))
 			indentState = kIsBlockEnd;
-		if (includes(blockStart, sBlock))
+		if (includes(blockStart_, sBlock))
 			indentState = kIsBlockStart;
 	}
 	return indentState;
@@ -2542,10 +2542,10 @@ int CuteTextBase::IndentOfBlock(int line) {
 	int indentBlock = GetLineIndentation(line);
 	int backLine = line;
 	IndentationStatus indentState = kIsNone;
-	if (statementIndent.IsEmpty() && blockStart.IsEmpty() && blockEnd.IsEmpty())
+	if (statementIndent_.IsEmpty() && blockStart_.IsEmpty() && blockEnd_.IsEmpty())
 		indentState = kIsBlockStart;	// Don't bother searching backwards
 
-	int lineLimit = line - statementLookback;
+	int lineLimit = line - statementLookback_;
 	if (lineLimit < 0)
 		lineLimit = 0;
 	while ((backLine >= lineLimit) && (indentState == 0)) {
@@ -2553,11 +2553,11 @@ int CuteTextBase::IndentOfBlock(int line) {
 		if (indentState != 0) {
 			indentBlock = GetLineIndentation(backLine);
 			if (indentState == kIsBlockStart) {
-				if (!indentOpening)
+				if (!indentOpening_)
 					indentBlock += indentSize;
 			}
 			if (indentState == kIsBlockEnd) {
-				if (indentClosing)
+				if (indentClosing_)
 					indentBlock -= indentSize;
 				if (indentBlock < 0)
 					indentBlock = 0;
@@ -2633,26 +2633,26 @@ void CuteTextBase::AutomaticIndentation(char ch) {
 		return;
 	}
 
-	if (blockEnd.IsSingleChar() && ch == blockEnd.words[0]) {	// Dedent maybe
-		if (!indentClosing) {
+	if (blockEnd_.IsSingleChar() && ch == blockEnd_.words[0]) {	// Dedent maybe
+		if (!indentClosing_) {
 			if (RangeIsAllWhitespace(thisLineStart, selStart - 1)) {
 				SetLineIndentation(curLine, indentBlock - indentSize);
 			}
 		}
-	} else if (!blockEnd.IsSingleChar() && (ch == ' ')) {	// Dedent maybe
-		if (!indentClosing && (GetIndentState(curLine) == kIsBlockEnd)) {}
-	} else if (blockStart.IsSingleChar() && (ch == blockStart.words[0])) {
+	} else if (!blockEnd_.IsSingleChar() && (ch == ' ')) {	// Dedent maybe
+		if (!indentClosing_ && (GetIndentState(curLine) == kIsBlockEnd)) {}
+	} else if (blockStart_.IsSingleChar() && (ch == blockStart_.words[0])) {
 		// Dedent maybe if first on line and previous line was starting keyword
-		if (!indentOpening && (GetIndentState(curLine - 1) == kIsKeyWordStart)) {
+		if (!indentOpening_ && (GetIndentState(curLine - 1) == kIsKeyWordStart)) {
 			if (RangeIsAllWhitespace(thisLineStart, selStart - 1)) {
 				SetLineIndentation(curLine, indentBlock - indentSize);
 			}
 		}
 	} else if ((ch == '\r' || ch == '\n') && (selStart == thisLineStart)) {
-		if (!indentClosing && !blockEnd.IsSingleChar()) {	// Dedent previous line maybe
-			const std::vector<std::string> controlWords = GetLinePartsInStyle(curLine - 1, blockEnd);
+		if (!indentClosing_ && !blockEnd_.IsSingleChar()) {	// Dedent previous line maybe
+			const std::vector<std::string> controlWords = GetLinePartsInStyle(curLine - 1, blockEnd_);
 			if (!controlWords.empty()) {
-				if (includes(blockEnd, controlWords[0])) {
+				if (includes(blockEnd_, controlWords[0])) {
 					// Check if first keyword on line is an ender
 					SetLineIndentation(curLine - 1, IndentOfBlock(curLine - 2) - indentSize);
 					// Recalculate as may have changed previous line
@@ -2729,7 +2729,7 @@ void CuteTextBase::CharAdded(int utf32) {
 				StartCallTip();
 			} else {
 				autoCCausedByOnlyOne = false;
-				if (indentMaintain)
+				if (indentMaintain_)
 					MaintainIndentation(ch);
 				else if (props.GetInt("indent.automatic"))
 					AutomaticIndentation(ch);
@@ -2788,7 +2788,7 @@ bool CuteTextBase::HandleXml(char ch) {
 	}
 
 	// This may make sense only in certain languages
-	if (lexLanguage != SCLEX_HTML && lexLanguage != SCLEX_XML) {
+	if (lexLanguage_ != SCLEX_HTML && lexLanguage_ != SCLEX_XML) {
 		return false;
 	}
 
@@ -2942,10 +2942,10 @@ void CuteTextBase::AddCommand(const std::string &cmd, const std::string &dir, Jo
 			directoryRun = directoryExplicit;
 		} else {
 			// Relative paths are relative to the current file
-			directoryRun = FilePath(filePath.Directory(), directoryExplicit).NormalizePath();
+			directoryRun = FilePath(filePath_.Directory(), directoryExplicit).NormalizePath();
 		}
 	} else {
-		directoryRun = filePath.Directory();
+		directoryRun = filePath_.Directory();
 	}
 	jobQueue.AddCommand(cmd, directoryRun, jobType, input, flags);
 }
@@ -3009,7 +3009,7 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 		// when doing the opening. Must be done there as user
 		// may decide to open multiple files so do not know yet
 		// how much room needed.
-		OpenDialog(filePath.Directory(), GUI::StringFromUTF8(props.GetExpandedString("open.filter")).c_str());
+		OpenDialog(filePath_.Directory(), GUI::StringFromUTF8(props.GetExpandedString("open.filter")).c_str());
 		WindowSetFocus(wEditor_);
 		break;
 	case IDM_OPENSELECTED:
@@ -3095,11 +3095,11 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 		CurrentBuffer()->unicodeMode = static_cast<UniMode>(cmdID - IDM_ENCODING_DEFAULT);
 		if (CurrentBuffer()->unicodeMode != uni8Bit) {
 			// Override the code page if Unicode
-			codePage = SC_CP_UTF8;
+			codePage_ = SC_CP_UTF8;
 		} else {
-			codePage = props.GetInt("code.page");
+			codePage_ = props.GetInt("code.page");
 		}
-		wEditor_.Call(SCI_SETCODEPAGE, codePage);
+		wEditor_.Call(SCI_SETCODEPAGE, codePage_);
 		break;
 
 	case IDM_NEXTFILESTACK:
@@ -3897,7 +3897,7 @@ void CuteTextBase::Notify(SCNotification *notification) {
 	case SCN_STYLENEEDED: {
 			if (extender) {
 				// Colourisation may be performed by script
-				if ((notification->nmhdr.idFrom == IDM_SRCWIN) && (lexLanguage == SCLEX_CONTAINER)) {
+				if ((notification->nmhdr.idFrom == IDM_SRCWIN) && (lexLanguage_ == SCLEX_CONTAINER)) {
 					int endStyled = wEditor_.Call(SCI_GETENDSTYLED);
 					const int lineEndStyled = wEditor_.Call(SCI_LINEFROMPOSITION, endStyled);
 					endStyled = wEditor_.Call(SCI_POSITIONFROMLINE, lineEndStyled);
@@ -3905,7 +3905,7 @@ void CuteTextBase::Notify(SCNotification *notification) {
 					int styleStart = 0;
 					if (endStyled > 0)
 						styleStart = styler.StyleAt(endStyled - 1);
-					styler.SetCodePage(codePage);
+					styler.SetCodePage(codePage_);
 					extender->OnStyle(endStyled, static_cast<int>(notification->position - endStyled),
 					        styleStart, &styler);
 					styler.Flush();
@@ -4107,8 +4107,8 @@ void CuteTextBase::CheckMenus() {
 	EnableAMenuItem(IDM_UNDO, CallFocusedElseDefault(true, SCI_CANUNDO));
 	EnableAMenuItem(IDM_REDO, CallFocusedElseDefault(true, SCI_CANREDO));
 	EnableAMenuItem(IDM_DUPLICATE, CurrentBuffer()->isReadOnly);
-	EnableAMenuItem(IDM_SHOWCALLTIP, apis != 0);
-	EnableAMenuItem(IDM_COMPLETE, apis != 0);
+	EnableAMenuItem(IDM_SHOWCALLTIP, apis_ != 0);
+	EnableAMenuItem(IDM_COMPLETE, apis_ != 0);
 	CheckAMenuItem(IDM_SPLITVERTICAL, splitVertical);
 	EnableAMenuItem(IDM_OPENFILESHERE, props.GetInt("check.if.already.open") != 0);
 	CheckAMenuItem(IDM_OPENFILESHERE, openFilesHere);
@@ -4245,7 +4245,7 @@ void CuteTextBase::OnTimer() {
 }
 
 void CuteTextBase::SetIdler(bool on) {
-	needIdle = on;
+	needIdle_ = on;
 }
 
 void CuteTextBase::OnIdle() {
@@ -4293,7 +4293,7 @@ void CuteTextBase::PerformOne(char *action) {
 	if (arg) {
 		arg++;
 		if (isprefix(action, "askfilename:")) {
-			extender->OnMacro("filename", filePath.AsUTF8().c_str());
+			extender->OnMacro("filename", filePath_.AsUTF8().c_str());
 		} else if (isprefix(action, "askproperty:")) {
 			PropertyToDirector(arg);
 		} else if (isprefix(action, "close:")) {
@@ -4699,7 +4699,7 @@ bool CuteTextBase::ProcessCommandLine(const GUI::gui_string &args, int phase) {
 				} else {
 					if (evaluate) {
 						props.ReadLine(GUI::UTF8FromString(arg).c_str(), PropSetFile::rlActive,
-							FilePath::GetWorkingDirectory(), filter, NULL, 0);
+							FilePath::GetWorkingDirectory(), filter_, NULL, 0);
 					}
 				}
 			}
@@ -4730,7 +4730,7 @@ bool CuteTextBase::ProcessCommandLine(const GUI::gui_string &args, int phase) {
 				RestoreSession();
 		}
 		// No open file after session load so create empty document.
-		if (filePath.IsUntitled() && buffers.length == 1 && !buffers.buffers[0].isDirty) {
+		if (filePath_.IsUntitled() && buffers.length == 1 && !buffers.buffers[0].isDirty) {
 			Open(GUI_TEXT(""));
 		}
 	}

@@ -25,7 +25,7 @@ protected:
 	char buf[bufferSize+1];
 	int startPos;
 	int endPos;
-	int codePage;
+	int codePage_;
 
 	GUI::ScintillaWindow &sw;
 	int lenDoc;
@@ -55,10 +55,10 @@ public:
 		return buf[position - startPos];
 	}
 	bool IsLeadByte(char ch) const {
-		return codePage && InternalIsLeadByte(ch);
+		return codePage_ && InternalIsLeadByte(ch);
 	}
-	void SetCodePage(int codePage_) {
-		codePage = codePage_;
+	void SetCodePage(int codePage) {
+		codePage_ = codePage;
 	}
 	bool Match(int pos, const char *s);
 	int StyleAt(int position);

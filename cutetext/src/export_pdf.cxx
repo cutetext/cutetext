@@ -417,7 +417,7 @@ void SciTEBase::SaveToPDF(const FilePath &saveName) {
 	PDFRender pr;
 
 	RemoveFindMarks();
-	wEditor.Call(SCI_COLOURISE, 0, -1);
+	wEditor_.Call(SCI_COLOURISE, 0, -1);
 	// read exporter flags
 	int tabSize = props.GetInt("tabsize", PDF_TAB_DEFAULT);
 	if (tabSize < 0) {
@@ -514,7 +514,7 @@ void SciTEBase::SaveToPDF(const FilePath &saveName) {
 
 	// do here all the writing
 	const int lengthDoc = LengthDocument();
-	TextReader acc(wEditor);
+	TextReader acc(wEditor_);
 
 	if (!lengthDoc) {	// enable zero length docs
 		pr.nextLine();

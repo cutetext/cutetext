@@ -81,7 +81,7 @@ void SciTEBase::SaveToXML(const FilePath &saveName) {
 	// but will eventually use utf-8 (once i know how to get them out).
 
 	RemoveFindMarks();
-	wEditor.Call(SCI_COLOURISE, 0, -1);
+	wEditor_.Call(SCI_COLOURISE, 0, -1);
 
 	int tabSize = props.GetInt("tabsize");
 	if (tabSize == 0) {
@@ -90,7 +90,7 @@ void SciTEBase::SaveToXML(const FilePath &saveName) {
 
 	const int lengthDoc = LengthDocument();
 
-	TextReader acc(wEditor);
+	TextReader acc(wEditor_);
 
 	FILE *fp = saveName.Open(GUI_TEXT("wt"));
 	bool failedWrite = fp == NULL;
@@ -100,11 +100,11 @@ void SciTEBase::SaveToXML(const FilePath &saveName) {
 		const bool collapseSpaces = (props.GetInt("export.xml.collapse.spaces", 1) == 1);
 		const bool collapseLines  = (props.GetInt("export.xml.collapse.lines", 1) == 1);
 
-		fprintf(fp, "<?xml version='1.0' encoding='%s'?>\n", (codePage == SC_CP_UTF8) ? "utf-8" : "ascii");
+		fprintf(fp, "<?xml version='1.0' encoding='%s'?>\n", (codePage_ == SC_CP_UTF8) ? "utf-8" : "ascii");
 
 		fputs("<document xmlns='http://www.scintila.org/scite.rng'", fp);
 		fprintf(fp, " filename='%s'",
-		        filePath.Name().AsUTF8().c_str());
+		        filePath_.Name().AsUTF8().c_str());
 		fprintf(fp, " type='%s'", "unknown");
 		fprintf(fp, " version='%s'", "1.0");
 		fputs(">\n", fp);

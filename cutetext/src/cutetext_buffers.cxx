@@ -364,7 +364,7 @@ sptr_t SciTEBase::GetDocumentAt(int index) {
 	}
 	if (buffers.buffers[index].doc == 0) {
 		// Create a new document buffer
-		buffers.buffers[index].doc = wEditor.CallReturnPointer(SCI_CREATEDOCUMENT, 0, 0);
+		buffers.buffers[index].doc = wEditor_.CallReturnPointer(SCI_CREATEDOCUMENT, 0, 0);
 	}
 	return buffers.buffers[index].doc;
 }
@@ -376,10 +376,10 @@ void SciTEBase::SwitchDocumentAt(int index, sptr_t pdoc) {
 	const sptr_t pdocOld = buffers.buffers[index].doc;
 	buffers.buffers[index].doc = pdoc;
 	if (pdocOld) {
-		wEditor.Call(SCI_RELEASEDOCUMENT, 0, pdocOld);
+		wEditor_.Call(SCI_RELEASEDOCUMENT, 0, pdocOld);
 	}
 	if (index == buffers.Current()) {
-		wEditor.Call(SCI_SETDOCPOINTER, 0, buffers.buffers[index].doc);
+		wEditor_.Call(SCI_SETDOCPOINTER, 0, buffers.buffers[index].doc);
 	}
 }
 
@@ -411,13 +411,13 @@ void SciTEBase::SetDocumentAt(int index, bool updateStack) {
 	SetFileName(bufferNext.file);
 	propsDiscovered = bufferNext.props;
 	propsDiscovered.superPS = &propsLocal;
-	wEditor.Call(SCI_SETDOCPOINTER, 0, GetDocumentAt(buffers.Current()));
+	wEditor_.Call(SCI_SETDOCPOINTER, 0, GetDocumentAt(buffers.Current()));
 	const bool restoreBookmarks = bufferNext.lifeState == Buffer::kReadAll;
 	PerformDeferredTasks();
 	if (bufferNext.lifeState == Buffer::kReadAll) {
 		CompleteOpen(kOcCompleteSwitch);
 		if (extender)
-			extender->OnOpen(filePath.AsUTF8().c_str());
+			extender->OnOpen(filePath_.AsUTF8().c_str());
 	}
 	RestoreState(bufferNext, restoreBookmarks);
 
@@ -430,7 +430,7 @@ void SciTEBase::SetDocumentAt(int index, bool updateStack) {
 	if (restoreBookmarks) {
 		// Restoring a session does not restore the scroll position
 		// so make the selection visible.
-		wEditor.Call(SCI_SCROLLCARET);
+		wEditor_.Call(SCI_SCROLLCARET);
 	}
 
 	SetBuffersMenu();
@@ -438,7 +438,7 @@ void SciTEBase::SetDocumentAt(int index, bool updateStack) {
 	UpdateStatusBar(true);
 
 	if (extender) {
-		extender->OnSwitchFile(filePath.AsUTF8().c_str());
+		extender->OnSwitchFile(filePath_.AsUTF8().c_str());
 	}
 }
 
@@ -447,10 +447,10 @@ void SciTEBase::UpdateBuffersCurrent() {
 
 	if ((buffers.length > 0) && (currentbuf >= 0) && (buffers.GetVisible(currentbuf))) {
 		Buffer &bufferCurrent = buffers.buffers[currentbuf];
-		bufferCurrent.file.Set(filePath);
+		bufferCurrent.file.Set(filePath_);
 		if (bufferCurrent.lifeState != Buffer::kReading && bufferCurrent.lifeState != Buffer::kReadAll) {
-			bufferCurrent.file.selection.position = wEditor.Call(SCI_GETCURRENTPOS);
-			bufferCurrent.file.selection.anchor = wEditor.Call(SCI_GETANCHOR);
+			bufferCurrent.file.selection.position = wEditor_.Call(SCI_GETCURRENTPOS);
+			bufferCurrent.file.selection.anchor = wEditor_.Call(SCI_GETANCHOR);
 			bufferCurrent.file.scrollPosition = GetCurrentScrollPosition();
 
 			// Retrieve fold state and store in buffer state info
@@ -460,7 +460,7 @@ void SciTEBase::UpdateBuffersCurrent() {
 
 			if (props.GetInt("fold")) {
 				for (int line = 0; ; line++) {
-					const int lineNext = wEditor.Call(SCI_CONTRACTEDFOLDNEXT, line);
+					const int lineNext = wEditor_.Call(SCI_CONTRACTEDFOLDNEXT, line);
 					if ((line < 0) || (lineNext < line))
 						break;
 					line = lineNext;
@@ -471,7 +471,7 @@ void SciTEBase::UpdateBuffersCurrent() {
 			if (props.GetInt("session.bookmarks")) {
 				buffers.buffers[buffers.Current()].bookmarks.clear();
 				int lineBookmark = -1;
-				while ((lineBookmark = wEditor.Call(SCI_MARKERNEXT, lineBookmark + 1, 1 << kMarkerBookmark)) >= 0) {
+				while ((lineBookmark = wEditor_.Call(SCI_MARKERNEXT, lineBookmark + 1, 1 << kMarkerBookmark)) >= 0) {
 					bufferCurrent.bookmarks.push_back(lineBookmark);
 				}
 			}
@@ -499,13 +499,13 @@ bool SciTEBase::CanMakeRoom(bool maySaveIfDirty) {
 }
 
 void SciTEBase::ClearDocument() {
-	wEditor.Call(SCI_SETREADONLY, 0);
-	wEditor.Call(SCI_SETUNDOCOLLECTION, 0);
-	wEditor.Call(SCI_CLEARALL);
-	wEditor.Call(SCI_EMPTYUNDOBUFFER);
-	wEditor.Call(SCI_SETUNDOCOLLECTION, 1);
-	wEditor.Call(SCI_SETSAVEPOINT);
-	wEditor.Call(SCI_SETREADONLY, CurrentBuffer()->isReadOnly);
+	wEditor_.Call(SCI_SETREADONLY, 0);
+	wEditor_.Call(SCI_SETUNDOCOLLECTION, 0);
+	wEditor_.Call(SCI_CLEARALL);
+	wEditor_.Call(SCI_EMPTYUNDOBUFFER);
+	wEditor_.Call(SCI_SETUNDOCOLLECTION, 1);
+	wEditor_.Call(SCI_SETSAVEPOINT);
+	wEditor_.Call(SCI_SETREADONLY, CurrentBuffer()->isReadOnly);
 }
 
 void SciTEBase::CreateBuffers() {
@@ -523,8 +523,8 @@ void SciTEBase::InitialiseBuffers() {
 	if (!buffers.initialised) {
 		buffers.initialised = true;
 		// First document is the default from creation of control
-		buffers.buffers[0].doc = wEditor.CallReturnPointer(SCI_GETDOCPOINTER, 0, 0);
-		wEditor.Call(SCI_ADDREFDOCUMENT, 0, buffers.buffers[0].doc); // We own this reference
+		buffers.buffers[0].doc = wEditor_.CallReturnPointer(SCI_GETDOCPOINTER, 0, 0);
+		wEditor_.Call(SCI_ADDREFDOCUMENT, 0, buffers.buffers[0].doc); // We own this reference
 		if (buffers.size() == 1) {
 			// Single buffer mode, delete the Buffers main menu entry
 			DestroyMenuItem(kMenuBuffers, 0);
@@ -562,7 +562,7 @@ void SciTEBase::LoadSessionFile(const GUI::gui_char *sessionName) {
 	}
 
 	propsSession.Clear();
-	propsSession.Read(sessionPathName, sessionPathName.Directory(), filter, NULL, 0);
+	propsSession.Read(sessionPathName, sessionPathName.Directory(), filter_, NULL, 0);
 
 	FilePath sessionFilePath = FilePath(sessionPathName).AbsolutePath();
 	// Add/update SessionPath environment variable
@@ -728,9 +728,9 @@ void SciTEBase::SaveSessionFile(const GUI::gui_char *sessionName) {
 
 		// Save recent files list
 		for (int i = kFileStackMax - 1; i >= 0; i--) {
-			if (recentFileStack[i].IsSet()) {
+			if (recentFileStack_[i].IsSet()) {
 				propKey = IndexPropKey("mru", j++, "path");
-				fprintf(sessionFile, "%s=%s\n", propKey.c_str(), recentFileStack[i].AsUTF8().c_str());
+				fprintf(sessionFile, "%s=%s\n", propKey.c_str(), recentFileStack_[i].AsUTF8().c_str());
 			}
 		}
 	}
@@ -819,34 +819,34 @@ void SciTEBase::SetIndentSettings() {
 	std::string useTabsChars = props.GetNewExpandString("use.tabs.",
 	        fileNameForExtension.c_str());
 	if (useTabsChars.length() != 0) {
-		wEditor.Call(SCI_SETUSETABS, atoi(useTabsChars.c_str()));
+		wEditor_.Call(SCI_SETUSETABS, atoi(useTabsChars.c_str()));
 	} else {
-		wEditor.Call(SCI_SETUSETABS, useTabs);
+		wEditor_.Call(SCI_SETUSETABS, useTabs);
 	}
 	std::string tabSizeForExt = props.GetNewExpandString("tab.size.",
 	        fileNameForExtension.c_str());
 	if (tabSizeForExt.length() != 0) {
-		wEditor.Call(SCI_SETTABWIDTH, atoi(tabSizeForExt.c_str()));
+		wEditor_.Call(SCI_SETTABWIDTH, atoi(tabSizeForExt.c_str()));
 	} else if (tabSize != 0) {
-		wEditor.Call(SCI_SETTABWIDTH, tabSize);
+		wEditor_.Call(SCI_SETTABWIDTH, tabSize);
 	}
 	std::string indentSizeForExt = props.GetNewExpandString("indent.size.",
 	        fileNameForExtension.c_str());
 	if (indentSizeForExt.length() != 0) {
-		wEditor.Call(SCI_SETINDENT, atoi(indentSizeForExt.c_str()));
+		wEditor_.Call(SCI_SETINDENT, atoi(indentSizeForExt.c_str()));
 	} else {
-		wEditor.Call(SCI_SETINDENT, indentSize);
+		wEditor_.Call(SCI_SETINDENT, indentSize);
 	}
 }
 
 void SciTEBase::SetEol() {
 	std::string eol_mode = props.GetString("eol.mode");
 	if (eol_mode == "LF") {
-		wEditor.Call(SCI_SETEOLMODE, SC_EOL_LF);
+		wEditor_.Call(SCI_SETEOLMODE, SC_EOL_LF);
 	} else if (eol_mode == "CR") {
-		wEditor.Call(SCI_SETEOLMODE, SC_EOL_CR);
+		wEditor_.Call(SCI_SETEOLMODE, SC_EOL_CR);
 	} else if (eol_mode == "CRLF") {
-		wEditor.Call(SCI_SETEOLMODE, SC_EOL_CRLF);
+		wEditor_.Call(SCI_SETEOLMODE, SC_EOL_CRLF);
 	}
 }
 
@@ -873,11 +873,11 @@ void SciTEBase::New() {
 	}
 
 	const sptr_t doc = GetDocumentAt(buffers.Current());
-	wEditor.Call(SCI_SETDOCPOINTER, 0, doc);
+	wEditor_.Call(SCI_SETDOCPOINTER, 0, doc);
 
-	FilePath curDirectory(filePath.Directory());
-	filePath.Set(curDirectory, GUI_TEXT(""));
-	SetFileName(filePath);
+	FilePath curDirectory(filePath_.Directory());
+	filePath_.Set(curDirectory, GUI_TEXT(""));
+	SetFileName(filePath_);
 	UpdateBuffersCurrent();
 	SetBuffersMenu();
 	CurrentBuffer()->isDirty = false;
@@ -899,20 +899,20 @@ void SciTEBase::RestoreState(const Buffer &buffer, bool restoreBookmarks) {
 	ReadProperties();
 	if (CurrentBuffer()->unicodeMode != uni8Bit) {
 		// Override the code page if Unicode
-		codePage = SC_CP_UTF8;
-		wEditor.Call(SCI_SETCODEPAGE, codePage);
+		codePage_ = SC_CP_UTF8;
+		wEditor_.Call(SCI_SETCODEPAGE, codePage_);
 	}
 
 	// check to see whether there is saved fold state, restore
 	if (!buffer.foldState.empty()) {
-		wEditor.Call(SCI_COLOURISE, 0, -1);
+		wEditor_.Call(SCI_COLOURISE, 0, -1);
 		for (const int fold : buffer.foldState) {
-			wEditor.Call(SCI_TOGGLEFOLD, fold);
+			wEditor_.Call(SCI_TOGGLEFOLD, fold);
 		}
 	}
 	if (restoreBookmarks) {
 		for (const int bookmark : buffer.bookmarks) {
-			wEditor.Call(SCI_MARKERADD, bookmark, kMarkerBookmark);
+			wEditor_.Call(SCI_MARKERADD, bookmark, kMarkerBookmark);
 		}
 	}
 }
@@ -925,14 +925,14 @@ void SciTEBase::Close(bool updateUI, bool loadingSession, bool makingRoomForNew)
 	}
 
 	if (extender) {
-		extender->OnClose(filePath.AsUTF8().c_str());
+		extender->OnClose(filePath_.AsUTF8().c_str());
 	}
 
 	if (buffers.size() == 1) {
 		// With no buffer list, Close means close from MRU
-		closingLast = !(recentFileStack[0].IsSet());
+		closingLast = !(recentFileStack_[0].IsSet());
 		buffers.buffers[0].Init();
-		filePath.Set(GUI_TEXT(""));
+		filePath_.Set(GUI_TEXT(""));
 		ClearDocument(); //avoid double are-you-sure
 		if (!makingRoomForNew)
 			StackMenu(0); // calls New, or Open, which calls InitBuffer
@@ -955,7 +955,7 @@ void SciTEBase::Close(bool updateUI, bool loadingSession, bool makingRoomForNew)
 				if (buffers.lengthVisible == 0)
 					New();
 			} else {
-				wEditor.Call(SCI_SETREADONLY, 0);
+				wEditor_.Call(SCI_SETREADONLY, 0);
 				ClearDocument();
 				buffers.RemoveCurrent();
 			}
@@ -967,19 +967,19 @@ void SciTEBase::Close(bool updateUI, bool loadingSession, bool makingRoomForNew)
 		if (updateUI)
 			SetFileName(bufferNext.file);
 		else
-			filePath = bufferNext.file;
+			filePath_ = bufferNext.file;
 		propsDiscovered = bufferNext.props;
 		propsDiscovered.superPS = &propsLocal;
-		wEditor.Call(SCI_SETDOCPOINTER, 0, GetDocumentAt(buffers.Current()));
+		wEditor_.Call(SCI_SETDOCPOINTER, 0, GetDocumentAt(buffers.Current()));
 		PerformDeferredTasks();
 		if (bufferNext.lifeState == Buffer::kReadAll) {
 			//restoreBookmarks = true;
 			CompleteOpen(kOcCompleteSwitch);
 			if (extender)
-				extender->OnOpen(filePath.AsUTF8().c_str());
+				extender->OnOpen(filePath_.AsUTF8().c_str());
 		}
 		if (closingLast) {
-			wEditor.Call(SCI_SETREADONLY, 0);
+			wEditor_.Call(SCI_SETREADONLY, 0);
 			ClearDocument();
 		}
 		if (updateUI)
@@ -996,7 +996,7 @@ void SciTEBase::Close(bool updateUI, bool loadingSession, bool makingRoomForNew)
 	}
 
 	if (extender && !closingLast && !makingRoomForNew) {
-		extender->OnSwitchFile(filePath.AsUTF8().c_str());
+		extender->OnSwitchFile(filePath_.AsUTF8().c_str());
 	}
 
 	if (closingLast && props.GetInt("quit.on.close.last") && !loadingSession) {
@@ -1009,14 +1009,14 @@ void SciTEBase::CloseTab(int tab) {
 	if (tab == tabCurrent) {
 		if (SaveIfUnsure() != kSaveCancelled) {
 			Close();
-			WindowSetFocus(wEditor);
+			WindowSetFocus(wEditor_);
 		}
 	} else {
 		FilePath fpCurrent = buffers.buffers[tabCurrent].file.AbsolutePath();
 		SetDocumentAt(tab);
 		if (SaveIfUnsure() != kSaveCancelled) {
 			Close();
-			WindowSetFocus(wEditor);
+			WindowSetFocus(wEditor_);
 			// Return to the previous buffer
 			SetDocumentAt(buffers.GetDocumentByName(fpCurrent));
 		}
@@ -1225,11 +1225,11 @@ void SciTEBase::DeleteFileStackMenu() {
 }
 
 void SciTEBase::SetFileStackMenu() {
-	if (recentFileStack[0].IsSet()) {
+	if (recentFileStack_[0].IsSet()) {
 		SetMenuItem(kMenuFile, MRU_START, IDM_MRU_SEP, GUI_TEXT(""));
 		for (int stackPos = 0; stackPos < kFileStackMax; stackPos++) {
 			const int itemID = kFileStackCmdID + stackPos;
-			if (recentFileStack[stackPos].IsSet()) {
+			if (recentFileStack_[stackPos].IsSet()) {
 				GUI::gui_string sEntry;
 
 #if defined(_WIN32) || defined(GTK)
@@ -1238,7 +1238,7 @@ void SciTEBase::SetFileStackMenu() {
 				sEntry = sHotKey;
 #endif
 
-				GUI::gui_string path = recentFileStack[stackPos].AsInternal();
+				GUI::gui_string path = recentFileStack_[stackPos].AsInternal();
 				EscapeFilePathsForMenu(path);
 
 				sEntry += path;
@@ -1265,7 +1265,7 @@ bool SciTEBase::AddFileToBuffer(const BufferState &bufferState) {
 					// File was opened synchronously
 					RestoreState(buffers.buffers[iBuffer], true);
 					DisplayAround(buffers.buffers[iBuffer].file);
-					wEditor.Call(SCI_SCROLLCARET);
+					wEditor_.Call(SCI_SCROLLCARET);
 				}
 			}
 		}
@@ -1281,11 +1281,11 @@ void SciTEBase::AddFileToStack(const RecentFile &file) {
 	if (file.IsSet() && !file.IsUntitled()) {
 		int eqPos = kFileStackMax - 1;
 		for (int stackPos = 0; stackPos < kFileStackMax; stackPos++)
-			if (recentFileStack[stackPos].SameNameAs(file))
+			if (recentFileStack_[stackPos].SameNameAs(file))
 				eqPos = stackPos;
 		for (int stackPos = eqPos; stackPos > 0; stackPos--)
-			recentFileStack[stackPos] = recentFileStack[stackPos - 1];
-		recentFileStack[0] = file;
+			recentFileStack_[stackPos] = recentFileStack_[stackPos - 1];
+		recentFileStack_[0] = file;
 	}
 	SetFileStackMenu();
 }
@@ -1296,10 +1296,10 @@ void SciTEBase::RemoveFileFromStack(const FilePath &file) {
 	DeleteFileStackMenu();
 	int stackPos;
 	for (stackPos = 0; stackPos < kFileStackMax; stackPos++) {
-		if (recentFileStack[stackPos].SameNameAs(file)) {
+		if (recentFileStack_[stackPos].SameNameAs(file)) {
 			for (int movePos = stackPos; movePos < kFileStackMax - 1; movePos++)
-				recentFileStack[movePos] = recentFileStack[movePos + 1];
-			recentFileStack[kFileStackMax - 1].Init();
+				recentFileStack_[movePos] = recentFileStack_[movePos + 1];
+			recentFileStack_[kFileStackMax - 1].Init();
 			break;
 		}
 	}
@@ -1317,10 +1317,10 @@ void SciTEBase::DisplayAround(const RecentFile &rf) {
 	if ((rf.selection.position != INVALID_POSITION) && (rf.selection.anchor != INVALID_POSITION)) {
 		SetSelection(rf.selection.anchor, rf.selection.position);
 
-		const int curTop = wEditor.Call(SCI_GETFIRSTVISIBLELINE);
-		const int lineTop = wEditor.Call(SCI_VISIBLEFROMDOCLINE, rf.scrollPosition);
-		wEditor.Call(SCI_LINESCROLL, 0, lineTop - curTop);
-		wEditor.Call(SCI_CHOOSECARETX, 0, 0);
+		const int curTop = wEditor_.Call(SCI_GETFIRSTVISIBLELINE);
+		const int lineTop = wEditor_.Call(SCI_VISIBLEFROMDOCLINE, rf.scrollPosition);
+		wEditor_.Call(SCI_LINESCROLL, 0, lineTop - curTop);
+		wEditor_.Call(SCI_CHOOSECARETX, 0, 0);
 	}
 }
 
@@ -1332,7 +1332,7 @@ void SciTEBase::DisplayAround(const RecentFile &rf) {
 void SciTEBase::StackMenuNext() {
 	DeleteFileStackMenu();
 	for (int stackPos = kFileStackMax - 1; stackPos >= 0;stackPos--) {
-		if (recentFileStack[stackPos].IsSet()) {
+		if (recentFileStack_[stackPos].IsSet()) {
 			SetFileStackMenu();
 			StackMenu(stackPos);
 			return;
@@ -1342,24 +1342,24 @@ void SciTEBase::StackMenuNext() {
 }
 
 void SciTEBase::StackMenuPrev() {
-	if (recentFileStack[0].IsSet()) {
+	if (recentFileStack_[0].IsSet()) {
 		// May need to restore last entry if removed by StackMenu
-		RecentFile rfLast = recentFileStack[kFileStackMax - 1];
+		RecentFile rfLast = recentFileStack_[kFileStackMax - 1];
 		StackMenu(0);	// Swap current with top of stack
-		for (const RecentFile &rf : recentFileStack) {
+		for (const RecentFile &rf : recentFileStack_) {
 			if (rfLast.SameNameAs(rf)) {
 				rfLast.Init();
 			}
 		}
 		// And rotate the MRU
-		RecentFile rfCurrent = recentFileStack[0];
+		RecentFile rfCurrent = recentFileStack_[0];
 		// Move them up
 		for (int stackPos = 0; stackPos < kFileStackMax - 1; stackPos++) {
-			recentFileStack[stackPos] = recentFileStack[stackPos + 1];
+			recentFileStack_[stackPos] = recentFileStack_[stackPos + 1];
 		}
-		recentFileStack[kFileStackMax - 1].Init();
+		recentFileStack_[kFileStackMax - 1].Init();
 		// Copy current file into first empty
-		for (RecentFile &rf : recentFileStack) {
+		for (RecentFile &rf : recentFileStack_) {
 			if (!rf.IsSet()) {
 				if (rfLast.IsSet()) {
 					rf = rfLast;
@@ -1379,14 +1379,14 @@ void SciTEBase::StackMenuPrev() {
 void SciTEBase::StackMenu(int pos) {
 	if (CanMakeRoom(true)) {
 		if (pos >= 0) {
-			if ((pos == 0) && (!recentFileStack[pos].IsSet())) {	// Empty
+			if ((pos == 0) && (!recentFileStack_[pos].IsSet())) {	// Empty
 				New();
 				SetWindowName();
 				ReadProperties();
 				SetIndentSettings();
 				SetEol();
-			} else if (recentFileStack[pos].IsSet()) {
-				RecentFile rf = recentFileStack[pos];
+			} else if (recentFileStack_[pos].IsSet()) {
+				RecentFile rf = recentFileStack_[pos];
 				// Already asked user so don't allow Open to ask again.
 				Open(rf, kOfNoSaveIfDirty);
 				CurrentBuffer()->file.scrollPosition = rf.scrollPosition;
@@ -1874,17 +1874,17 @@ static void Chomp(std::string &s, int ch) {
 }
 
 void SciTEBase::ShowMessages(int line) {
-	wEditor.Call(SCI_ANNOTATIONSETSTYLEOFFSET, diagnosticStyleStart);
-	wEditor.Call(SCI_ANNOTATIONSETVISIBLE, ANNOTATION_BOXED);
-	wEditor.Call(SCI_ANNOTATIONCLEARALL);
-	TextReader acc(wOutput);
+	wEditor_.Call(SCI_ANNOTATIONSETSTYLEOFFSET, diagnosticStyleStart_);
+	wEditor_.Call(SCI_ANNOTATIONSETVISIBLE, ANNOTATION_BOXED);
+	wEditor_.Call(SCI_ANNOTATIONCLEARALL);
+	TextReader acc(wOutput_);
 	while ((line > 0) && (acc.StyleAt(acc.LineStart(line-1)) != SCE_ERR_CMD))
 		line--;
-	const int maxLine = wOutput.Call(SCI_GETLINECOUNT);
+	const int maxLine = wOutput_.Call(SCI_GETLINECOUNT);
 	while ((line < maxLine) && (acc.StyleAt(acc.LineStart(line)) != SCE_ERR_CMD)) {
-		const int startPosLine = wOutput.Call(SCI_POSITIONFROMLINE, line, 0);
-		const int lineEnd = wOutput.Call(SCI_GETLINEENDPOSITION, line, 0);
-		std::string message = GetRangeString(wOutput, startPosLine, lineEnd);
+		const int startPosLine = wOutput_.Call(SCI_POSITIONFROMLINE, line, 0);
+		const int lineEnd = wOutput_.Call(SCI_GETLINEENDPOSITION, line, 0);
+		std::string message = GetRangeString(wOutput_, startPosLine, lineEnd);
 		std::string source;
 		int column;
 		int style = acc.StyleAt(startPosLine);
@@ -1900,23 +1900,23 @@ void SciTEBase::ShowMessages(int line) {
 		}
 		GUI::gui_string sourceString = GUI::StringFromUTF8(source);
 		FilePath sourcePath = FilePath(sourceString).NormalizePath();
-		if (filePath.Name().SameNameAs(sourcePath.Name())) {
+		if (filePath_.Name().SameNameAs(sourcePath.Name())) {
 			if (style == SCE_ERR_GCC) {
 				const char *sColon = strchr(message.c_str(), ':');
 				if (sColon) {
-					std::string editLine = GetLine(wEditor, sourceLine);
+					std::string editLine = GetLine(wEditor_, sourceLine);
 					if (editLine == (sColon+1)) {
 						line++;
 						continue;
 					}
 				}
 			}
-			const int lenCurrent = wEditor.CallString(SCI_ANNOTATIONGETTEXT, sourceLine, NULL);
+			const int lenCurrent = wEditor_.CallString(SCI_ANNOTATIONGETTEXT, sourceLine, NULL);
 			std::string msgCurrent(lenCurrent, '\0');
 			std::string stylesCurrent(lenCurrent, '\0');
 			if (lenCurrent) {
-				wEditor.CallString(SCI_ANNOTATIONGETTEXT, sourceLine, &msgCurrent[0]);
-				wEditor.CallString(SCI_ANNOTATIONGETSTYLES, sourceLine, &stylesCurrent[0]);
+				wEditor_.CallString(SCI_ANNOTATIONGETTEXT, sourceLine, &msgCurrent[0]);
+				wEditor_.CallString(SCI_ANNOTATIONGETSTYLES, sourceLine, &stylesCurrent[0]);
 				msgCurrent += "\n";
 				stylesCurrent += '\0';
 			}
@@ -1931,8 +1931,8 @@ void SciTEBase::ShowMessages(int line) {
 				if (message.find("fatal") != std::string::npos)
 					msgStyle = 3;
 				stylesCurrent += std::string(message.length(), static_cast<char>(msgStyle));
-				wEditor.CallString(SCI_ANNOTATIONSETTEXT, sourceLine, msgCurrent.c_str());
-				wEditor.CallString(SCI_ANNOTATIONSETSTYLES, sourceLine, stylesCurrent.c_str());
+				wEditor_.CallString(SCI_ANNOTATIONSETTEXT, sourceLine, msgCurrent.c_str());
+				wEditor_.CallString(SCI_ANNOTATIONSETSTYLES, sourceLine, stylesCurrent.c_str());
 			}
 		}
 		line++;
@@ -1941,35 +1941,35 @@ void SciTEBase::ShowMessages(int line) {
 
 void SciTEBase::GoMessage(int dir) {
 	Sci_CharacterRange crange;
-	crange.cpMin = wOutput.Call(SCI_GETSELECTIONSTART);
-	crange.cpMax = wOutput.Call(SCI_GETSELECTIONEND);
+	crange.cpMin = wOutput_.Call(SCI_GETSELECTIONSTART);
+	crange.cpMax = wOutput_.Call(SCI_GETSELECTIONEND);
 	const long selStart = static_cast<long>(crange.cpMin);
-	const int curLine = wOutput.Call(SCI_LINEFROMPOSITION, selStart);
-	const int maxLine = wOutput.Call(SCI_GETLINECOUNT);
+	const int curLine = wOutput_.Call(SCI_LINEFROMPOSITION, selStart);
+	const int maxLine = wOutput_.Call(SCI_GETLINECOUNT);
 	int lookLine = curLine + dir;
 	if (lookLine < 0)
 		lookLine = maxLine - 1;
 	else if (lookLine >= maxLine)
 		lookLine = 0;
-	TextReader acc(wOutput);
+	TextReader acc(wOutput_);
 	while ((dir == 0) || (lookLine != curLine)) {
-		const int startPosLine = wOutput.Call(SCI_POSITIONFROMLINE, lookLine, 0);
-		const int lineLength = wOutput.Call(SCI_LINELENGTH, lookLine, 0);
+		const int startPosLine = wOutput_.Call(SCI_POSITIONFROMLINE, lookLine, 0);
+		const int lineLength = wOutput_.Call(SCI_LINELENGTH, lookLine, 0);
 		int style = acc.StyleAt(startPosLine);
 		if (style != SCE_ERR_DEFAULT &&
 		        style != SCE_ERR_CMD &&
 		        style != SCE_ERR_DIFF_ADDITION &&
 		        style != SCE_ERR_DIFF_CHANGED &&
 		        style != SCE_ERR_DIFF_DELETION) {
-			wOutput.Call(SCI_MARKERDELETEALL, static_cast<uptr_t>(-1));
-			wOutput.Call(SCI_MARKERDEFINE, 0, SC_MARK_SMALLRECT);
-			wOutput.Call(SCI_MARKERSETFORE, 0, ColourOfProperty(props,
+			wOutput_.Call(SCI_MARKERDELETEALL, static_cast<uptr_t>(-1));
+			wOutput_.Call(SCI_MARKERDEFINE, 0, SC_MARK_SMALLRECT);
+			wOutput_.Call(SCI_MARKERSETFORE, 0, ColourOfProperty(props,
 			        "error.marker.fore", ColourRGB(0x7f, 0, 0)));
-			wOutput.Call(SCI_MARKERSETBACK, 0, ColourOfProperty(props,
+			wOutput_.Call(SCI_MARKERSETBACK, 0, ColourOfProperty(props,
 			        "error.marker.back", ColourRGB(0xff, 0xff, 0)));
-			wOutput.Call(SCI_MARKERADD, lookLine, 0);
-			wOutput.Call(SCI_SETSEL, startPosLine, startPosLine);
-			std::string message = GetRangeString(wOutput, startPosLine, startPosLine + lineLength);
+			wOutput_.Call(SCI_MARKERADD, lookLine, 0);
+			wOutput_.Call(SCI_SETSEL, startPosLine, startPosLine);
+			std::string message = GetRangeString(wOutput_, startPosLine, startPosLine + lineLength);
 			if ((style == SCE_ERR_ESCSEQ) || (style == SCE_ERR_ESCSEQ_UNKNOWN) || (style >= SCE_ERR_ES_BLACK)) {
 				// GCC message with ANSI escape sequences
 				RemoveEscSeq(message);
@@ -1981,14 +1981,14 @@ void SciTEBase::GoMessage(int dir) {
 			if (sourceLine >= 0) {
 				GUI::gui_string sourceString = GUI::StringFromUTF8(source);
 				FilePath sourcePath = FilePath(sourceString).NormalizePath();
-				if (!filePath.Name().SameNameAs(sourcePath)) {
+				if (!filePath_.Name().SameNameAs(sourcePath)) {
 					FilePath messagePath;
 					bool bExists = false;
-					if (Exists(dirNameAtExecute.AsInternal(), sourceString.c_str(), &messagePath)) {
+					if (Exists(dirNameAtExecute_.AsInternal(), sourceString.c_str(), &messagePath)) {
 						bExists = true;
-					} else if (Exists(dirNameForExecute.AsInternal(), sourceString.c_str(), &messagePath)) {
+					} else if (Exists(dirNameForExecute_.AsInternal(), sourceString.c_str(), &messagePath)) {
 						bExists = true;
-					} else if (Exists(filePath.Directory().AsInternal(), sourceString.c_str(), &messagePath)) {
+					} else if (Exists(filePath_.Directory().AsInternal(), sourceString.c_str(), &messagePath)) {
 						bExists = true;
 					} else if (Exists(NULL, sourceString.c_str(), &messagePath)) {
 						bExists = true;
@@ -2012,7 +2012,7 @@ void SciTEBase::GoMessage(int dir) {
 				// If ctag then get line number after search tag or use ctag line number
 				if (style == SCE_ERR_CTAG) {
 					//without following focus GetCTag wouldn't work correct
-					WindowSetFocus(wOutput);
+					WindowSetFocus(wOutput_);
 					std::string cTag = GetCTag();
 					if (cTag.length() != 0) {
 						if (atoi(cTag.c_str()) > 0) {
@@ -2022,7 +2022,7 @@ void SciTEBase::GoMessage(int dir) {
 							findWhat = cTag;
 							FindNext(false);
 							//get linenumber for marker from found position
-							sourceLine = wEditor.Call(SCI_LINEFROMPOSITION, wEditor.Call(SCI_GETCURRENTPOS));
+							sourceLine = wEditor_.Call(SCI_LINEFROMPOSITION, wEditor_.Call(SCI_GETCURRENTPOS));
 						}
 					}
 				}
@@ -2030,7 +2030,7 @@ void SciTEBase::GoMessage(int dir) {
 				else if (style == SCE_ERR_DIFF_MESSAGE) {
 					const bool isAdd = message.find("+++ ") == 0;
 					const int atLine = lookLine + (isAdd ? 1 : 2); // lines are in this order: ---, +++, @@
-					std::string atMessage = GetLine(wOutput, atLine);
+					std::string atMessage = GetLine(wOutput_, atLine);
 					if (StartsWith(atMessage, "@@ -")) {
 						size_t atPos = 4; // deleted position starts right after "@@ -"
 						if (isAdd) {
@@ -2046,20 +2046,20 @@ void SciTEBase::GoMessage(int dir) {
 					ShowMessages(lookLine);
 				}
 
-				wEditor.Call(SCI_MARKERDELETEALL, 0);
-				wEditor.Call(SCI_MARKERDEFINE, 0, SC_MARK_CIRCLE);
-				wEditor.Call(SCI_MARKERSETFORE, 0, ColourOfProperty(props,
+				wEditor_.Call(SCI_MARKERDELETEALL, 0);
+				wEditor_.Call(SCI_MARKERDEFINE, 0, SC_MARK_CIRCLE);
+				wEditor_.Call(SCI_MARKERSETFORE, 0, ColourOfProperty(props,
 				        "error.marker.fore", ColourRGB(0x7f, 0, 0)));
-				wEditor.Call(SCI_MARKERSETBACK, 0, ColourOfProperty(props,
+				wEditor_.Call(SCI_MARKERSETBACK, 0, ColourOfProperty(props,
 				        "error.marker.back", ColourRGB(0xff, 0xff, 0)));
-				wEditor.Call(SCI_MARKERADD, sourceLine, 0);
-				int startSourceLine = wEditor.Call(SCI_POSITIONFROMLINE, sourceLine, 0);
-				const int endSourceline = wEditor.Call(SCI_POSITIONFROMLINE, sourceLine + 1, 0);
+				wEditor_.Call(SCI_MARKERADD, sourceLine, 0);
+				int startSourceLine = wEditor_.Call(SCI_POSITIONFROMLINE, sourceLine, 0);
+				const int endSourceline = wEditor_.Call(SCI_POSITIONFROMLINE, sourceLine + 1, 0);
 				if (column >= 0) {
 					// Get the position in line according to current tab setting
-					startSourceLine = wEditor.Call(SCI_FINDCOLUMN, sourceLine, column);
+					startSourceLine = wEditor_.Call(SCI_FINDCOLUMN, sourceLine, column);
 				}
-				EnsureRangeVisible(wEditor, startSourceLine, startSourceLine);
+				EnsureRangeVisible(wEditor_, startSourceLine, startSourceLine);
 				if (props.GetInt("error.select.line") == 1) {
 					//select whole source source line from column with error
 					SetSelection(endSourceline, startSourceLine);
@@ -2071,7 +2071,7 @@ void SciTEBase::GoMessage(int dir) {
 				::Remove(message, std::string("\n"));
 				props.Set("CurrentMessage", message.c_str());
 				UpdateStatusBar(false);
-				WindowSetFocus(wEditor);
+				WindowSetFocus(wEditor_);
 			}
 			return;
 		}

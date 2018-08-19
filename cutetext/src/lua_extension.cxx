@@ -1731,7 +1731,7 @@ struct StylingContext {
 
 	char cursor[3][8];
 	int cursorPos;
-	int codePage;
+	int codePage_;
 	int lenCurrent;
 	int lenNext;
 
@@ -1807,8 +1807,8 @@ struct StylingContext {
 		unsigned int nextSlot = (cursorPos + 1) % 3;
 		memcpy(cursor[nextSlot], "\0\0\0\0\0\0\0\0", 8);
 		cursor[nextSlot][0] = byteNext;
-		if (codePage) {
-			if (codePage == SC_CP_UTF8) {
+		if (codePage_) {
+			if (codePage_ == SC_CP_UTF8) {
 				if (byteNext >= 0x80) {
 					cursor[nextSlot][1] = styler->SafeGetCharAt(nextPos+1);
 					lenNext = 2;
@@ -2014,7 +2014,7 @@ bool LuaExtension::OnStyle(unsigned int startPos, int lengthDoc, int initStyle, 
 			sc.lengthDoc = lengthDoc;
 			sc.initStyle = initStyle;
 			sc.styler = styler;
-			sc.codePage = static_cast<int>(host->Send(ExtensionAPI::paneEditor, SCI_GETCODEPAGE));
+			sc.codePage_ = static_cast<int>(host->Send(ExtensionAPI::paneEditor, SCI_GETCODEPAGE));
 
 			lua_newtable(luaState);
 

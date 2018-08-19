@@ -68,32 +68,32 @@ void SciTEBase::SetFileName(const FilePath &openName, bool fixCase) {
 		// openName is surrounded by double quotes
 		GUI::gui_string pathCopy = openName.AsInternal();
 		pathCopy = pathCopy.substr(1, pathCopy.size() - 2);
-		filePath.Set(pathCopy);
+		filePath_.Set(pathCopy);
 	} else {
-		filePath.Set(openName);
+		filePath_.Set(openName);
 	}
 
 	// Break fullPath into directory and file name using working directory for relative paths
-	if (!filePath.IsAbsolute()) {
+	if (!filePath_.IsAbsolute()) {
 		// Relative path. Since we ran AbsolutePath, we probably are here because fullPath is empty.
-		filePath.SetDirectory(filePath.Directory());
+		filePath_.SetDirectory(filePath_.Directory());
 	}
 
 	if (fixCase) {
-		filePath.FixName();
+		filePath_.FixName();
 	}
 
 	ReadLocalPropFile();
 
-	props.Set("FilePath", filePath.AsUTF8().c_str());
-	props.Set("FileDir", filePath.Directory().AsUTF8().c_str());
-	props.Set("FileName", filePath.BaseName().AsUTF8().c_str());
-	props.Set("FileExt", filePath.Extension().AsUTF8().c_str());
+	props.Set("FilePath", filePath_.AsUTF8().c_str());
+	props.Set("FileDir", filePath_.Directory().AsUTF8().c_str());
+	props.Set("FileName", filePath_.BaseName().AsUTF8().c_str());
+	props.Set("FileExt", filePath_.Extension().AsUTF8().c_str());
 	props.Set("FileNameExt", FileNameExt().AsUTF8().c_str());
 
 	SetWindowName();
 	if (buffers.buffers.size() > 0)
-		CurrentBuffer()->file.Set(filePath);
+		CurrentBuffer()->file.Set(filePath_);
 }
 
 // See if path exists.
@@ -118,7 +118,7 @@ void SciTEBase::CountLineEnds(int &linesCR, int &linesLF, int &linesCRLF) {
 	linesCRLF = 0;
 	const int lengthDoc = LengthDocument();
 	char chPrev = ' ';
-	TextReader acc(wEditor);
+	TextReader acc(wEditor_);
 	char chNext = acc.SafeGetCharAt(0);
 	for (int i = 0; i < lengthDoc; i++) {
 		const char ch = chNext;
@@ -147,18 +147,18 @@ void SciTEBase::DiscoverEOLSetting() {
 		int linesCRLF;
 		CountLineEnds(linesCR, linesLF, linesCRLF);
 		if (((linesLF >= linesCR) && (linesLF > linesCRLF)) || ((linesLF > linesCR) && (linesLF >= linesCRLF)))
-			wEditor.Call(SCI_SETEOLMODE, SC_EOL_LF);
+			wEditor_.Call(SCI_SETEOLMODE, SC_EOL_LF);
 		else if (((linesCR >= linesLF) && (linesCR > linesCRLF)) || ((linesCR > linesLF) && (linesCR >= linesCRLF)))
-			wEditor.Call(SCI_SETEOLMODE, SC_EOL_CR);
+			wEditor_.Call(SCI_SETEOLMODE, SC_EOL_CR);
 		else if (((linesCRLF >= linesLF) && (linesCRLF > linesCR)) || ((linesCRLF > linesLF) && (linesCRLF >= linesCR)))
-			wEditor.Call(SCI_SETEOLMODE, SC_EOL_CRLF);
+			wEditor_.Call(SCI_SETEOLMODE, SC_EOL_CRLF);
 	}
 }
 
 // Look inside the first line for a #! clue regarding the language
 std::string SciTEBase::DiscoverLanguage() {
 	const int length = Minimum(LengthDocument(), 64 * 1024);
-	std::string buf = GetRangeString(wEditor, 0, length);
+	std::string buf = GetRangeString(wEditor_, 0, length);
 	std::string languageOverride = "";
 	std::string l1 = ExtractLine(buf.c_str(), length);
 	if (StartsWith(l1, "<?xml")) {
@@ -197,7 +197,7 @@ std::string SciTEBase::DiscoverLanguage() {
 
 void SciTEBase::DiscoverIndentSetting() {
 	const int lengthDoc = std::min(LengthDocument(), 1000000);
-	TextReader acc(wEditor);
+	TextReader acc(wEditor_);
 	bool newline = true;
 	int indent = 0; // current line indentation
 	int tabSizes[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 }; // number of lines with corresponding indentation (index 0 - tab)
@@ -241,10 +241,10 @@ void SciTEBase::DiscoverIndentSetting() {
 	}
 	// set indentation
 	if (topTabSize == 0) {
-		wEditor.Call(SCI_SETUSETABS, 1);
+		wEditor_.Call(SCI_SETUSETABS, 1);
 	} else if (topTabSize != -1) {
-		wEditor.Call(SCI_SETUSETABS, 0);
-		wEditor.Call(SCI_SETINDENT, topTabSize);
+		wEditor_.Call(SCI_SETUSETABS, 0);
+		wEditor_.Call(SCI_SETINDENT, topTabSize);
 	}
 }
 
@@ -252,34 +252,34 @@ void SciTEBase::OpenCurrentFile(long long fileSize, bool suppressMessage, bool a
 	if (CurrentBuffer()->pFileWorker) {
 		// Already performing an asynchronous load or save so do not restart load
 		if (!suppressMessage) {
-			GUI::gui_string msg = LocaliseMessage("Could not open file '^0'.", filePath.AsInternal());
+			GUI::gui_string msg = LocaliseMessage("Could not open file '^0'.", filePath_.AsInternal());
 			WindowMessageBox(wCuteText_, msg);
 		}
 		return;
 	}
 
-	FILE *fp = filePath.Open(fileRead);
+	FILE *fp = filePath_.Open(fileRead);
 	if (!fp) {
 		if (!suppressMessage) {
-			GUI::gui_string msg = LocaliseMessage("Could not open file '^0'.", filePath.AsInternal());
+			GUI::gui_string msg = LocaliseMessage("Could not open file '^0'.", filePath_.AsInternal());
 			WindowMessageBox(wCuteText_, msg);
 		}
-		if (!wEditor.Call(SCI_GETUNDOCOLLECTION)) {
-			wEditor.Call(SCI_SETUNDOCOLLECTION, 1);
+		if (!wEditor_.Call(SCI_GETUNDOCOLLECTION)) {
+			wEditor_.Call(SCI_SETUNDOCOLLECTION, 1);
 		}
 		return;
 	}
 
 	CurrentBuffer()->SetTimeFromFile();
 
-	wEditor.Call(SCI_BEGINUNDOACTION);	// Group together clear and insert
-	wEditor.Call(SCI_CLEARALL);
+	wEditor_.Call(SCI_BEGINUNDOACTION);	// Group together clear and insert
+	wEditor_.Call(SCI_CLEARALL);
 
 	CurrentBuffer()->lifeState = Buffer::kReading;
 	if (asynchronous) {
 		// Turn grey while loading
-		wEditor.Call(SCI_STYLESETBACK, STYLE_DEFAULT, 0xEEEEEE);
-		wEditor.Call(SCI_SETREADONLY, 1);
+		wEditor_.Call(SCI_STYLESETBACK, STYLE_DEFAULT, 0xEEEEEE);
+		wEditor_.Call(SCI_SETREADONLY, 1);
 		assert(CurrentBufferConst()->pFileWorker == NULL);
 		ILoader *pdocLoad;
 		try {
@@ -294,17 +294,17 @@ void SciTEBase::OpenCurrentFile(long long fileSize, bool suppressMessage, bool a
 				docOptions |= SC_DOCUMENTOPTION_STYLES_NONE;
 
 			pdocLoad = reinterpret_cast<ILoader *>(
-				wEditor.CallReturnPointer(SCI_CREATELOADER, static_cast<uptr_t>(fileSize) + 1000,
+				wEditor_.CallReturnPointer(SCI_CREATELOADER, static_cast<uptr_t>(fileSize) + 1000,
 					docOptions));
 		} catch (...) {
-			wEditor.Call(SCI_SETSTATUS, 0);
+			wEditor_.Call(SCI_SETSTATUS, 0);
 			return;
 		}
-		CurrentBuffer()->pFileWorker = new FileLoader(this, pdocLoad, filePath, static_cast<size_t>(fileSize), fp);
+		CurrentBuffer()->pFileWorker = new FileLoader(this, pdocLoad, filePath_, static_cast<size_t>(fileSize), fp);
 		CurrentBuffer()->pFileWorker->sleepTime = props.GetInt("asynchronous.sleep");
 		PerformOnNewThread(CurrentBuffer()->pFileWorker);
 	} else {
-		wEditor.Call(SCI_ALLOCATE, static_cast<uptr_t>(fileSize) + 1000);
+		wEditor_.Call(SCI_ALLOCATE, static_cast<uptr_t>(fileSize) + 1000);
 
 		Utf8_16_Read convert;
 		std::vector<char> data(blockSize);
@@ -313,19 +313,19 @@ void SciTEBase::OpenCurrentFile(long long fileSize, bool suppressMessage, bool a
 		while (lenFile > 0) {
 			lenFile = convert.convert(&data[0], lenFile);
 			const char *dataBlock = convert.getNewBuf();
-			wEditor.CallString(SCI_ADDTEXT, lenFile, dataBlock);
+			wEditor_.CallString(SCI_ADDTEXT, lenFile, dataBlock);
 			lenFile = fread(&data[0], 1, data.size(), fp);
 			if (lenFile == 0) {
 				// Handle case where convert is holding a lead surrogate but no more data
 				const size_t lenFileTrail = convert.convert(NULL, lenFile);
 				if (lenFileTrail) {
 					const char *dataTrail = convert.getNewBuf();
-					wEditor.CallString(SCI_ADDTEXT, lenFileTrail, dataTrail);
+					wEditor_.CallString(SCI_ADDTEXT, lenFileTrail, dataTrail);
 				}
 			}
 		}
 		fclose(fp);
-		wEditor.Call(SCI_ENDUNDOACTION);
+		wEditor_.Call(SCI_ENDUNDOACTION);
 
 		CurrentBuffer()->unicodeMode = static_cast<UniMode>(
 			    static_cast<int>(convert.getEncoding()));
@@ -361,27 +361,27 @@ void SciTEBase::TextRead(FileWorker *pFileWorker) {
 				extender->OnOpen(buffers.buffers[iBuffer].file.AsUTF8().c_str());
 			RestoreState(buffers.buffers[iBuffer], true);
 			DisplayAround(buffers.buffers[iBuffer].file);
-			wEditor.Call(SCI_SCROLLCARET);
+			wEditor_.Call(SCI_SCROLLCARET);
 		}
 	}
 }
 
 void SciTEBase::PerformDeferredTasks() {
 	if (buffers.buffers[buffers.Current()].futureDo & Buffer::kFdFinishSave) {
-		wEditor.Call(SCI_SETSAVEPOINT);
-		wEditor.Call(SCI_SETREADONLY, CurrentBuffer()->isReadOnly);
+		wEditor_.Call(SCI_SETSAVEPOINT);
+		wEditor_.Call(SCI_SETREADONLY, CurrentBuffer()->isReadOnly);
 		buffers.FinishedFuture(buffers.Current(), Buffer::kFdFinishSave);
 	}
 }
 
 void SciTEBase::CompleteOpen(OpenCompletion oc) {
-	wEditor.Call(SCI_SETREADONLY, CurrentBuffer()->isReadOnly);
+	wEditor_.Call(SCI_SETREADONLY, CurrentBuffer()->isReadOnly);
 
 	if (oc != kOcSynchronous) {
 		ReadProperties();
 	}
 
-	if (language == "") {
+	if (language_ == "") {
 		std::string languageOverride = DiscoverLanguage();
 		if (languageOverride.length()) {
 			CurrentBuffer()->overrideExtension = languageOverride;
@@ -400,11 +400,11 @@ void SciTEBase::CompleteOpen(OpenCompletion oc) {
 
 	if (CurrentBuffer()->unicodeMode != uni8Bit) {
 		// Override the code page if Unicode
-		codePage = SC_CP_UTF8;
+		codePage_ = SC_CP_UTF8;
 	} else {
-		codePage = props.GetInt("code.page");
+		codePage_ = props.GetInt("code.page");
 	}
-	wEditor.Call(SCI_SETCODEPAGE, codePage);
+	wEditor_.Call(SCI_SETCODEPAGE, codePage_);
 
 	DiscoverEOLSetting();
 
@@ -412,14 +412,14 @@ void SciTEBase::CompleteOpen(OpenCompletion oc) {
 		DiscoverIndentSetting();
 	}
 
-	if (!wEditor.Call(SCI_GETUNDOCOLLECTION)) {
-		wEditor.Call(SCI_SETUNDOCOLLECTION, 1);
+	if (!wEditor_.Call(SCI_GETUNDOCOLLECTION)) {
+		wEditor_.Call(SCI_SETUNDOCOLLECTION, 1);
 	}
-	wEditor.Call(SCI_SETSAVEPOINT);
+	wEditor_.Call(SCI_SETSAVEPOINT);
 	if (props.GetInt("fold.on.open") > 0) {
 		FoldAll();
 	}
-	wEditor.Call(SCI_GOTOPOS, 0);
+	wEditor_.Call(SCI_GOTOPOS, 0);
 
 	CurrentBuffer()->CompleteLoading();
 
@@ -444,16 +444,16 @@ void SciTEBase::TextWritten(FileWorker *pFileWorker) {
 			buffers.SetVisible(iBuffer, true);
 			SetBuffersMenu();
 			if (iBuffer == buffers.Current()) {
-				wEditor.Call(SCI_SETREADONLY, CurrentBuffer()->isReadOnly);
+				wEditor_.Call(SCI_SETREADONLY, CurrentBuffer()->isReadOnly);
 			}
 		} else {
 			if (!buffers.GetVisible(iBuffer)) {
 				buffers.RemoveInvisible(iBuffer);
 			}
 			if (iBuffer == buffers.Current()) {
-				wEditor.Call(SCI_SETREADONLY, CurrentBuffer()->isReadOnly);
+				wEditor_.Call(SCI_SETREADONLY, CurrentBuffer()->isReadOnly);
 				if (pathSaved.SameNameAs(CurrentBuffer()->file)) {
-					wEditor.Call(SCI_SETSAVEPOINT);
+					wEditor_.Call(SCI_SETSAVEPOINT);
 				}
 				if (extender)
 					extender->OnSave(buffers.buffers[iBuffer].file.AsUTF8().c_str());
@@ -567,7 +567,7 @@ bool SciTEBase::Open(const FilePath &file, OpenFlags of) {
 	}
 
 	if (buffers.size() == buffers.length) {
-		AddFileToStack(RecentFile(filePath, GetSelectedRange(), GetCurrentScrollPosition()));
+		AddFileToStack(RecentFile(filePath_, GetSelectedRange(), GetCurrentScrollPosition()));
 		ClearDocument();
 		CurrentBuffer()->lifeState = Buffer::kOpen;
 		if (extender)
@@ -587,7 +587,7 @@ bool SciTEBase::Open(const FilePath &file, OpenFlags of) {
 		std::string propertiesText = CommandExecute(GUI::StringFromUTF8(discoveryScript).c_str(),
 			absPath.Directory().AsInternal());
 		if (propertiesText.size()) {
-			propsDiscovered.ReadFromMemory(propertiesText.c_str(), propertiesText.size(), absPath.Directory(), filter, NULL, 0);
+			propsDiscovered.ReadFromMemory(propertiesText.c_str(), propertiesText.size(), absPath.Directory(), filter_, NULL, 0);
 		}
 	}
 	CurrentBuffer()->props = propsDiscovered;
@@ -600,13 +600,13 @@ bool SciTEBase::Open(const FilePath &file, OpenFlags of) {
 	SetBuffersMenu();
 
 	bool asynchronous = false;
-	if (!filePath.IsUntitled()) {
-		wEditor.Call(SCI_SETREADONLY, 0);
-		wEditor.Call(SCI_CANCEL);
+	if (!filePath_.IsUntitled()) {
+		wEditor_.Call(SCI_SETREADONLY, 0);
+		wEditor_.Call(SCI_CANCEL);
 		if (of & kOfPreserveUndo) {
-			wEditor.Call(SCI_BEGINUNDOACTION);
+			wEditor_.Call(SCI_BEGINUNDOACTION);
 		} else {
-			wEditor.Call(SCI_SETUNDOCOLLECTION, 0);
+			wEditor_.Call(SCI_SETUNDOCOLLECTION, 0);
 		}
 
 		asynchronous = (fileSize > props.GetInt("background.open.size", -1)) &&
@@ -614,14 +614,14 @@ bool SciTEBase::Open(const FilePath &file, OpenFlags of) {
 		OpenCurrentFile(fileSize, of & kOfQuiet, asynchronous);
 
 		if (of & kOfPreserveUndo) {
-			wEditor.Call(SCI_ENDUNDOACTION);
+			wEditor_.Call(SCI_ENDUNDOACTION);
 		} else {
-			wEditor.Call(SCI_EMPTYUNDOBUFFER);
+			wEditor_.Call(SCI_EMPTYUNDOBUFFER);
 		}
 		CurrentBuffer()->isReadOnly = props.GetInt("read.only");
-		wEditor.Call(SCI_SETREADONLY, CurrentBuffer()->isReadOnly);
+		wEditor_.Call(SCI_SETREADONLY, CurrentBuffer()->isReadOnly);
 	}
-	RemoveFileFromStack(filePath);
+	RemoveFileFromStack(filePath_);
 	DeleteFileStackMenu();
 	SetFileStackMenu();
 	SetWindowName();
@@ -629,7 +629,7 @@ bool SciTEBase::Open(const FilePath &file, OpenFlags of) {
 		SetLineNumberWidth();
 	UpdateStatusBar(true);
 	if (extender && !asynchronous)
-		extender->OnOpen(filePath.AsUTF8().c_str());
+		extender->OnOpen(filePath_.AsUTF8().c_str());
 	return true;
 }
 
@@ -665,14 +665,14 @@ bool SciTEBase::OpenSelected() {
 	std::string openSuffix = props.GetNewExpandString("open.suffix.", fileNameForExtension.c_str());
 	selName += openSuffix;
 
-	if (EqualCaseInsensitive(selName.c_str(), FileNameExt().AsUTF8().c_str()) || EqualCaseInsensitive(selName.c_str(), filePath.AsUTF8().c_str())) {
+	if (EqualCaseInsensitive(selName.c_str(), FileNameExt().AsUTF8().c_str()) || EqualCaseInsensitive(selName.c_str(), filePath_.AsUTF8().c_str())) {
 		WarnUser(kWarnWrongFile);
 		return true;	// Do not open if it is the current file!
 	}
 
 	std::string cTag;
 	unsigned long lineNumber = 0;
-	if (IsPropertiesFile(filePath) &&
+	if (IsPropertiesFile(filePath_) &&
 	        (selName.find('.') == std::string::npos)) {
 		// We are in a properties file and try to open a file without extension,
 		// we suppose we want to open an imported .properties file
@@ -709,7 +709,7 @@ bool SciTEBase::OpenSelected() {
 	// filename is an absolute pathname
 	GUI::gui_string selFN = GUI::StringFromUTF8(selName);
 	if (!FilePath(selFN).IsAbsolute()) {
-		path = filePath.Directory();
+		path = filePath_.Directory();
 		// If not there, look in openpath
 		if (!Exists(path.AsInternal(), selFN.c_str(), NULL)) {
 			GUI::gui_string openPath = GUI::StringFromUTF8(props.GetNewExpandString(
@@ -736,10 +736,10 @@ bool SciTEBase::OpenSelected() {
 		const OpenFlags of = ((lineNumber > 0) || (cTag.length() != 0)) ? kOfSynchronous : kOfNone;
 		if (Open(pathReturned, of)) {
 			if (lineNumber > 0) {
-				wEditor.Call(SCI_GOTOLINE, lineNumber - 1);
+				wEditor_.Call(SCI_GOTOLINE, lineNumber - 1);
 			} else if (cTag.length() != 0) {
 				if (atoi(cTag.c_str()) > 0) {
-					wEditor.Call(SCI_GOTOLINE, atoi(cTag.c_str()) - 1);
+					wEditor_.Call(SCI_GOTOLINE, atoi(cTag.c_str()) - 1);
 				} else {
 					findWhat = cTag;
 					FindNext(false);
@@ -754,11 +754,11 @@ bool SciTEBase::OpenSelected() {
 }
 
 void SciTEBase::Revert() {
-	if (filePath.IsUntitled()) {
-		wEditor.Call(SCI_CLEARALL);
+	if (filePath_.IsUntitled()) {
+		wEditor_.Call(SCI_CLEARALL);
 	} else {
 		RecentFile rf = GetFilePosition();
-		OpenCurrentFile(filePath.GetFileLength(), false, false);
+		OpenCurrentFile(filePath_.GetFileLength(), false, false);
 		DisplayAround(rf);
 	}
 }
@@ -766,7 +766,7 @@ void SciTEBase::Revert() {
 void SciTEBase::CheckReload() {
 	if (props.GetInt("load.on.activate")) {
 		// Make a copy of fullPath as otherwise it gets aliased in Open
-		const time_t newModTime = filePath.ModifiedTime();
+		const time_t newModTime = filePath_.ModifiedTime();
 		if ((newModTime != 0) && (newModTime != CurrentBuffer()->fileModTime)) {
 			RecentFile rf = GetFilePosition();
 			const OpenFlags of = props.GetInt("reload.preserves.undo") ? kOfPreserveUndo : kOfNone;
@@ -776,7 +776,7 @@ void SciTEBase::CheckReload() {
 					if (CurrentBuffer()->isDirty) {
 						msg = LocaliseMessage(
 						          "The file '^0' has been modified. Should it be reloaded?",
-						          filePath.AsInternal());
+						          filePath_.AsInternal());
 					} else {
 						msg = LocaliseMessage(
 						          "The file '^0' has been modified outside SciTE. Should it be reloaded?",
@@ -784,13 +784,13 @@ void SciTEBase::CheckReload() {
 					}
 					const MessageBoxChoice decision = WindowMessageBox(wCuteText_, msg, kMbsYesNo | kMbsIconQuestion);
 					if (decision == kMbcYes) {
-						Open(filePath, static_cast<OpenFlags>(of | kOfForceLoad));
+						Open(filePath_, static_cast<OpenFlags>(of | kOfForceLoad));
 						DisplayAround(rf);
 					}
 					CurrentBuffer()->fileModLastAsk = newModTime;
 				}
 			} else {
-				Open(filePath, static_cast<OpenFlags>(of | kOfForceLoad));
+				Open(filePath_, static_cast<OpenFlags>(of | kOfForceLoad));
 				DisplayAround(rf);
 			}
 		}  else if (newModTime == 0 && CurrentBuffer()->fileModTime != 0)  {
@@ -803,7 +803,7 @@ void SciTEBase::CheckReload() {
 			SetBuffersMenu();
 			GUI::gui_string msg = LocaliseMessage(
 						      "The file '^0' has been deleted.",
-						      filePath.AsInternal());
+						      filePath_.AsInternal());
 			WindowMessageBox(wCuteText_, msg, kMbsOK);
 		}
 	}
@@ -820,7 +820,7 @@ void SciTEBase::Activate(bool activeApp) {
 }
 
 FilePath SciTEBase::SaveName(const char *ext) const {
-	GUI::gui_string savePath = filePath.AsInternal();
+	GUI::gui_string savePath = filePath_.AsInternal();
 	if (ext) {
 		int dot = static_cast<int>(savePath.length() - 1);
 		while ((dot >= 0) && (savePath[dot] != '.')) {
@@ -836,7 +836,7 @@ FilePath SciTEBase::SaveName(const char *ext) const {
 		}
 		savePath += GUI::StringFromUTF8(ext);
 	}
-	//~ fprintf(stderr, "SaveName <%s> <%s> <%s>\n", filePath.AsInternal(), savePath.c_str(), ext);
+	//~ fprintf(stderr, "SaveName <%s> <%s> <%s>\n", filePath_.AsInternal(), savePath.c_str(), ext);
 	return FilePath(savePath.c_str());
 }
 
@@ -849,13 +849,13 @@ SciTEBase::SaveResult SciTEBase::SaveIfUnsure(bool forceQuestion, SaveFlags sf) 
 		else
 			return kSaveCompleted;
 	}
-	if ((CurrentBuffer()->isDirty) && (LengthDocument() || !filePath.IsUntitled() || forceQuestion)) {
+	if ((CurrentBuffer()->isDirty) && (LengthDocument() || !filePath_.IsUntitled() || forceQuestion)) {
 		if (props.GetInt("are.you.sure", 1) ||
-		        filePath.IsUntitled() ||
+		        filePath_.IsUntitled() ||
 		        forceQuestion) {
 					GUI::gui_string msg;
-			if (!filePath.IsUntitled()) {
-				msg = LocaliseMessage("Save changes to '^0'?", filePath.AsInternal());
+			if (!filePath_.IsUntitled()) {
+				msg = LocaliseMessage("Save changes to '^0'?", filePath_.AsInternal());
 			} else {
 				msg = LocaliseMessage("Save changes to (Untitled)?");
 			}
@@ -891,19 +891,19 @@ SciTEBase::SaveResult SciTEBase::SaveIfUnsureAll() {
 		// Ensure extender is told about each buffer closing
 		for (int k = 0; k < buffers.lengthVisible; k++) {
 			SetDocumentAt(k);
-			extender->OnClose(filePath.AsUTF8().c_str());
+			extender->OnClose(filePath_.AsUTF8().c_str());
 		}
 	}
 
 	// Definitely going to exit now, so delete all documents
 	// Set editor back to initial document
 	if (buffers.lengthVisible > 0) {
-		wEditor.Call(SCI_SETDOCPOINTER, 0, buffers.buffers[0].doc);
+		wEditor_.Call(SCI_SETDOCPOINTER, 0, buffers.buffers[0].doc);
 	}
 	// Release all the extra documents
 	for (int j = 0; j < buffers.size(); j++) {
 		if (buffers.buffers[j].doc && !buffers.buffers[j].pFileWorker) {
-			wEditor.Call(SCI_RELEASEDOCUMENT, 0, buffers.buffers[j].doc);
+			wEditor_.Call(SCI_RELEASEDOCUMENT, 0, buffers.buffers[j].doc);
 			buffers.buffers[j].doc = 0;
 		}
 	}
@@ -933,10 +933,10 @@ SciTEBase::SaveResult SciTEBase::SaveIfUnsureForBuilt() {
 **/
 class SelectionKeeper {
 public:
-	explicit SelectionKeeper(GUI::ScintillaWindow &editor) : wEditor(editor) {
+	explicit SelectionKeeper(GUI::ScintillaWindow &editor) : wEditor_(editor) {
 		const int mask = SCVS_RECTANGULARSELECTION | SCVS_USERACCESSIBLE;
-		if (wEditor.Call(SCI_GETVIRTUALSPACEOPTIONS, 0, 0) & mask) {
-			const int n = wEditor.Call(SCI_GETSELECTIONS, 0, 0);
+		if (wEditor_.Call(SCI_GETVIRTUALSPACEOPTIONS, 0, 0) & mask) {
+			const int n = wEditor_.Call(SCI_GETSELECTIONS, 0, 0);
 			for (int i = 0; i < n; ++i) {
 				selections.push_back(LocFromPos(GetSelection(i)));
 			}
@@ -965,14 +965,14 @@ private:
 	};
 
 	Position GetAnchor(int i) {
-		const int pos  = wEditor.Call(SCI_GETSELECTIONNANCHOR, i, 0);
-		const int virt = wEditor.Call(SCI_GETSELECTIONNANCHORVIRTUALSPACE, i, 0);
+		const int pos  = wEditor_.Call(SCI_GETSELECTIONNANCHOR, i, 0);
+		const int virt = wEditor_.Call(SCI_GETSELECTIONNANCHORVIRTUALSPACE, i, 0);
 		return Position(pos, virt);
 	}
 
 	Position GetCaret(int i) {
-		const int pos  = wEditor.Call(SCI_GETSELECTIONNCARET, i, 0);
-		const int virt = wEditor.Call(SCI_GETSELECTIONNCARETVIRTUALSPACE, i, 0);
+		const int pos  = wEditor_.Call(SCI_GETSELECTIONNCARET, i, 0);
+		const int virt = wEditor_.Call(SCI_GETSELECTIONNCARETVIRTUALSPACE, i, 0);
 		return Position(pos, virt);
 	}
 
@@ -981,8 +981,8 @@ private:
 	};
 
 	Location LocFromPos(Position const &pos) {
-		const int line = wEditor.Call(SCI_LINEFROMPOSITION, pos.pos, 0);
-		const int col  = wEditor.Call(SCI_GETCOLUMN, pos.pos, 0) + pos.virt;
+		const int line = wEditor_.Call(SCI_LINEFROMPOSITION, pos.pos, 0);
+		const int col  = wEditor_.Call(SCI_GETCOLUMN, pos.pos, 0) + pos.virt;
 		return Location(line, col);
 	}
 
@@ -991,8 +991,8 @@ private:
 	}
 
 	Position PosFromLoc(Location const &loc) {
-		const int pos = wEditor.Call(SCI_FINDCOLUMN, loc.line, loc.col);
-		const int col = wEditor.Call(SCI_GETCOLUMN, pos, 0);
+		const int pos = wEditor_.Call(SCI_FINDCOLUMN, loc.line, loc.col);
+		const int col = wEditor_.Call(SCI_GETCOLUMN, pos, 0);
 		return Position(pos, loc.col - col);
 	}
 
@@ -1001,13 +1001,13 @@ private:
 	}
 
 	void SetAnchor(int i, Position const &pos) {
-		wEditor.Call(SCI_SETSELECTIONNANCHOR, i, pos.pos);
-		wEditor.Call(SCI_SETSELECTIONNANCHORVIRTUALSPACE, i, pos.virt);
+		wEditor_.Call(SCI_SETSELECTIONNANCHOR, i, pos.pos);
+		wEditor_.Call(SCI_SETSELECTIONNANCHORVIRTUALSPACE, i, pos.virt);
 	};
 
 	void SetCaret(int i, Position const &pos) {
-		wEditor.Call(SCI_SETSELECTIONNCARET, i, pos.pos);
-		wEditor.Call(SCI_SETSELECTIONNCARETVIRTUALSPACE, i, pos.virt);
+		wEditor_.Call(SCI_SETSELECTIONNCARET, i, pos.pos);
+		wEditor_.Call(SCI_SETSELECTIONNCARETVIRTUALSPACE, i, pos.virt);
 	}
 
 	void SetSelection(int i, std::pair<Position, Position> const &pos) {
@@ -1015,40 +1015,40 @@ private:
 		SetCaret(i, pos.second);
 	}
 
-	GUI::ScintillaWindow &wEditor;
+	GUI::ScintillaWindow &wEditor_;
 	std::vector<std::pair<Location, Location>> selections;
 };
 
 void SciTEBase::StripTrailingSpaces() {
-	const int maxLines = wEditor.Call(SCI_GETLINECOUNT);
-	SelectionKeeper keeper(wEditor);
+	const int maxLines = wEditor_.Call(SCI_GETLINECOUNT);
+	SelectionKeeper keeper(wEditor_);
 	for (int line = 0; line < maxLines; line++) {
-		const int lineStart = wEditor.Call(SCI_POSITIONFROMLINE, line);
-		const int lineEnd = wEditor.Call(SCI_GETLINEENDPOSITION, line);
+		const int lineStart = wEditor_.Call(SCI_POSITIONFROMLINE, line);
+		const int lineEnd = wEditor_.Call(SCI_GETLINEENDPOSITION, line);
 		int i = lineEnd - 1;
-		char ch = static_cast<char>(wEditor.Call(SCI_GETCHARAT, i));
+		char ch = static_cast<char>(wEditor_.Call(SCI_GETCHARAT, i));
 		while ((i >= lineStart) && ((ch == ' ') || (ch == '\t'))) {
 			i--;
-			ch = static_cast<char>(wEditor.Call(SCI_GETCHARAT, i));
+			ch = static_cast<char>(wEditor_.Call(SCI_GETCHARAT, i));
 		}
 		if (i < (lineEnd - 1)) {
-			wEditor.Call(SCI_SETTARGETSTART, i + 1);
-			wEditor.Call(SCI_SETTARGETEND, lineEnd);
-			wEditor.CallString(SCI_REPLACETARGET, 0, "");
+			wEditor_.Call(SCI_SETTARGETSTART, i + 1);
+			wEditor_.Call(SCI_SETTARGETEND, lineEnd);
+			wEditor_.CallString(SCI_REPLACETARGET, 0, "");
 		}
 	}
 }
 
 void SciTEBase::EnsureFinalNewLine() {
-	const int maxLines = wEditor.Call(SCI_GETLINECOUNT);
+	const int maxLines = wEditor_.Call(SCI_GETLINECOUNT);
 	bool appendNewLine = maxLines == 1;
-	const int endDocument = wEditor.Call(SCI_POSITIONFROMLINE, maxLines);
+	const int endDocument = wEditor_.Call(SCI_POSITIONFROMLINE, maxLines);
 	if (maxLines > 1) {
-		appendNewLine = endDocument > wEditor.Call(SCI_POSITIONFROMLINE, maxLines - 1);
+		appendNewLine = endDocument > wEditor_.Call(SCI_POSITIONFROMLINE, maxLines - 1);
 	}
 	if (appendNewLine) {
 		const char *eol = "\n";
-		switch (wEditor.Call(SCI_GETEOLMODE)) {
+		switch (wEditor_.Call(SCI_GETEOLMODE)) {
 		case SC_EOL_CRLF:
 			eol = "\r\n";
 			break;
@@ -1056,7 +1056,7 @@ void SciTEBase::EnsureFinalNewLine() {
 			eol = "\r";
 			break;
 		}
-		wEditor.CallString(SCI_INSERTTEXT, endDocument, eol);
+		wEditor_.CallString(SCI_INSERTTEXT, endDocument, eol);
 	}
 }
 
@@ -1064,18 +1064,18 @@ void SciTEBase::EnsureFinalNewLine() {
 bool SciTEBase::PrepareBufferForSave(const FilePath &saveName) {
 	bool retVal = false;
 	// Perform clean ups on text before saving
-	wEditor.Call(SCI_BEGINUNDOACTION);
-	if (stripTrailingSpaces)
+	wEditor_.Call(SCI_BEGINUNDOACTION);
+	if (stripTrailingSpaces_)
 		StripTrailingSpaces();
-	if (ensureFinalLineEnd)
+	if (ensureFinalLineEnd_)
 		EnsureFinalNewLine();
-	if (ensureConsistentLineEnds)
-		wEditor.Call(SCI_CONVERTEOLS, wEditor.Call(SCI_GETEOLMODE));
+	if (ensureConsistentLineEnds_)
+		wEditor_.Call(SCI_CONVERTEOLS, wEditor_.Call(SCI_GETEOLMODE));
 
 	if (extender)
 		retVal = extender->OnBeforeSave(saveName.AsUTF8().c_str());
 
-	wEditor.Call(SCI_ENDUNDOACTION);
+	wEditor_.Call(SCI_ENDUNDOACTION);
 
 	return retVal;
 }
@@ -1092,8 +1092,8 @@ bool SciTEBase::SaveBuffer(const FilePath &saveName, SaveFlags sf) {
 		if (fp) {
 			const size_t lengthDoc = LengthDocument();
 			if (!(sf & kSfSynchronous)) {
-				wEditor.Call(SCI_SETREADONLY, 1);
-				const char *documentBytes = reinterpret_cast<const char *>(wEditor.CallReturnPointer(SCI_GETCHARACTERPOINTER));
+				wEditor_.Call(SCI_SETREADONLY, 1);
+				const char *documentBytes = reinterpret_cast<const char *>(wEditor_.CallReturnPointer(SCI_GETCHARACTERPOINTER));
 				CurrentBuffer()->pFileWorker = new FileStorer(this, documentBytes, saveName, lengthDoc, fp, CurrentBuffer()->unicodeMode, (sf & kSfProgressVisible));
 				CurrentBuffer()->pFileWorker->sleepTime = props.GetInt("asynchronous.sleep");
 				if (PerformOnNewThread(CurrentBuffer()->pFileWorker)) {
@@ -1117,8 +1117,8 @@ bool SciTEBase::SaveBuffer(const FilePath &saveName, SaveFlags sf) {
 					if (grabSize > blockSize)
 						grabSize = blockSize;
 					// Round down so only whole characters retrieved.
-					grabSize = wEditor.Call(SCI_POSITIONBEFORE, i + grabSize + 1) - i;
-					GetRange(wEditor, static_cast<int>(i), static_cast<int>(i + grabSize), &data[0]);
+					grabSize = wEditor_.Call(SCI_POSITIONBEFORE, i + grabSize + 1) - i;
+					GetRange(wEditor_, static_cast<int>(i), static_cast<int>(i + grabSize), &data[0]);
 					const size_t written = convert.fwrite(&data[0], grabSize);
 					if (written == 0) {
 						retVal = false;
@@ -1152,12 +1152,12 @@ void SciTEBase::ReloadProperties() {
 
 // Returns false if cancelled or failed to save
 bool SciTEBase::Save(SaveFlags sf) {
-	if (!filePath.IsUntitled()) {
+	if (!filePath_.IsUntitled()) {
 		GUI::gui_string msg;
 		if (CurrentBuffer()->ShouldNotSave()) {
 			msg = LocaliseMessage(
 				"The file '^0' has not yet been loaded entirely, so it can not be saved right now. Please retry in a while.",
-				filePath.AsInternal());
+				filePath_.AsInternal());
 			WindowMessageBox(wCuteText_, msg);
 			// It is OK to not save this file
 			return true;
@@ -1166,20 +1166,20 @@ bool SciTEBase::Save(SaveFlags sf) {
 		if (CurrentBuffer()->pFileWorker) {
 			msg = LocaliseMessage(
 				"The file '^0' is already being saved.",
-				filePath.AsInternal());
+				filePath_.AsInternal());
 			WindowMessageBox(wCuteText_, msg);
 			// It is OK to not save this file
 			return true;
 		}
 
 		if (props.GetInt("save.deletes.first")) {
-			filePath.Remove();
+			filePath_.Remove();
 		} else if (props.GetInt("save.check.modified.time")) {
-			const time_t newModTime = filePath.ModifiedTime();
+			const time_t newModTime = filePath_.ModifiedTime();
 			if ((newModTime != 0) && (CurrentBuffer()->fileModTime != 0) &&
 				(newModTime != CurrentBuffer()->fileModTime)) {
 				msg = LocaliseMessage("The file '^0' has been modified outside SciTE. Should it be saved?",
-					filePath.AsInternal());
+					filePath_.AsInternal());
 				const MessageBoxChoice decision = WindowMessageBox(wCuteText_, msg, kMbsYesNo | kMbsIconQuestion);
 				if (decision == kMbcNo) {
 					return false;
@@ -1190,11 +1190,11 @@ bool SciTEBase::Save(SaveFlags sf) {
 		if ((LengthDocument() <= props.GetInt("background.save.size", -1)) ||
 			(buffers.SingleBuffer()))
 			sf = static_cast<SaveFlags>(sf | kSfSynchronous);
-		if (SaveBuffer(filePath, sf)) {
+		if (SaveBuffer(filePath_, sf)) {
 			CurrentBuffer()->SetTimeFromFile();
 			if (sf & kSfSynchronous) {
-				wEditor.Call(SCI_SETSAVEPOINT);
-				if (IsPropertiesFile(filePath)) {
+				wEditor_.Call(SCI_SETSAVEPOINT);
+				if (IsPropertiesFile(filePath_)) {
 					ReloadProperties();
 				}
 			}
@@ -1202,7 +1202,7 @@ bool SciTEBase::Save(SaveFlags sf) {
 			if (!CurrentBuffer()->failedSave) {
 				CurrentBuffer()->failedSave = true;
 				msg = LocaliseMessage(
-					"Could not save file '^0'. Save under a different name?", filePath.AsInternal());
+					"Could not save file '^0'. Save under a different name?", filePath_.AsInternal());
 				const MessageBoxChoice decision = WindowMessageBox(wCuteText_, msg, kMbsYesNo | kMbsIconWarning);
 				if (decision == kMbcYes) {
 					return SaveAsDialog();
@@ -1223,12 +1223,12 @@ bool SciTEBase::Save(SaveFlags sf) {
 			std::string savePathSuggestion = propsSuggestion.GetExpandedString("save.path.suggestion");
 			std::replace(savePathSuggestion.begin(), savePathSuggestion.end(), '\\', '/');  // To accept "\" on Unix
 			if (savePathSuggestion.size() > 0) {
-				filePath = FilePath(GUI::StringFromUTF8(savePathSuggestion)).NormalizePath();
+				filePath_ = FilePath(GUI::StringFromUTF8(savePathSuggestion)).NormalizePath();
 			}
 		}
 		const bool ret = SaveAsDialog();
 		if (!ret)
-			filePath.Set(GUI_TEXT(""));
+			filePath_.Set(GUI_TEXT(""));
 		return ret;
 	}
 }
@@ -1237,13 +1237,13 @@ void SciTEBase::SaveAs(const GUI::gui_char *file, bool fixCase) {
 	SetFileName(file, fixCase);
 	Save();
 	ReadProperties();
-	wEditor.Call(SCI_CLEARDOCUMENTSTYLE);
-	wEditor.Call(SCI_COLOURISE, 0, wEditor.Call(SCI_POSITIONFROMLINE, 1));
+	wEditor_.Call(SCI_CLEARDOCUMENTSTYLE);
+	wEditor_.Call(SCI_COLOURISE, 0, wEditor_.Call(SCI_POSITIONFROMLINE, 1));
 	Redraw();
 	SetWindowName();
 	BuffersMenu();
 	if (extender)
-		extender->OnSave(filePath.AsUTF8().c_str());
+		extender->OnSave(filePath_.AsUTF8().c_str());
 }
 
 bool SciTEBase::SaveIfNotOpen(const FilePath &destFile, bool fixCase) {
@@ -1278,19 +1278,19 @@ void SciTEBase::OpenFromStdin(bool UseOutputPane) {
 
 	Open(GUI_TEXT(""));
 	if (UseOutputPane) {
-		wOutput.Call(SCI_CLEARALL);
+		wOutput_.Call(SCI_CLEARALL);
 	} else {
-		wEditor.Call(SCI_BEGINUNDOACTION);	// Group together clear and insert
-		wEditor.Call(SCI_CLEARALL);
+		wEditor_.Call(SCI_BEGINUNDOACTION);	// Group together clear and insert
+		wEditor_.Call(SCI_CLEARALL);
 	}
 	size_t lenFile = fread(&data[0], 1, data.size(), stdin);
 	const UniMode umCodingCookie = CodingCookieValue(&data[0], lenFile);
 	while (lenFile > 0) {
 		lenFile = convert.convert(&data[0], lenFile);
 		if (UseOutputPane) {
-			wOutput.CallString(SCI_ADDTEXT, lenFile, convert.getNewBuf());
+			wOutput_.CallString(SCI_ADDTEXT, lenFile, convert.getNewBuf());
 		} else {
-			wEditor.CallString(SCI_ADDTEXT, lenFile, convert.getNewBuf());
+			wEditor_.CallString(SCI_ADDTEXT, lenFile, convert.getNewBuf());
 		}
 		lenFile = fread(&data[0], 1, data.size(), stdin);
 	}
@@ -1302,7 +1302,7 @@ void SciTEBase::OpenFromStdin(bool UseOutputPane) {
 		}
 		SizeSubWindows();
 	} else {
-		wEditor.Call(SCI_ENDUNDOACTION);
+		wEditor_.Call(SCI_ENDUNDOACTION);
 	}
 	CurrentBuffer()->unicodeMode = static_cast<UniMode>(
 	            static_cast<int>(convert.getEncoding()));
@@ -1312,25 +1312,25 @@ void SciTEBase::OpenFromStdin(bool UseOutputPane) {
 	}
 	if (CurrentBuffer()->unicodeMode != uni8Bit) {
 		// Override the code page if Unicode
-		codePage = SC_CP_UTF8;
+		codePage_ = SC_CP_UTF8;
 	} else {
-		codePage = props.GetInt("code.page");
+		codePage_ = props.GetInt("code.page");
 	}
 	if (UseOutputPane) {
-		wOutput.Call(SCI_SETSEL, 0, 0);
+		wOutput_.Call(SCI_SETSEL, 0, 0);
 	} else {
-		wEditor.Call(SCI_SETCODEPAGE, codePage);
+		wEditor_.Call(SCI_SETCODEPAGE, codePage_);
 
 		// Zero all the style bytes
-		wEditor.Call(SCI_CLEARDOCUMENTSTYLE);
+		wEditor_.Call(SCI_CLEARDOCUMENTSTYLE);
 
 		CurrentBuffer()->overrideExtension = "x.txt";
 		ReadProperties();
 		SetIndentSettings();
-		wEditor.Call(SCI_COLOURISE, 0, -1);
+		wEditor_.Call(SCI_COLOURISE, 0, -1);
 		Redraw();
 
-		wEditor.Call(SCI_SETSEL, 0, 0);
+		wEditor_.Call(SCI_SETSEL, 0, 0);
 	}
 }
 
@@ -1539,7 +1539,7 @@ void SciTEBase::InternalGrep(GrepFlags gf, const GUI::gui_char *directory, const
 		os.append(GUI::UTF8FromString(fileTypes).c_str());
 		os.append("\"\n");
 		OutputAppendStringSynchronised(os.c_str());
-		ShowOutputOnMainThread();
+		ShowOutput_OnMainThread();
 		originalEnd += os.length();
 	}
 	std::string searchString(search);

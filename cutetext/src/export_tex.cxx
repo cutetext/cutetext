@@ -104,13 +104,13 @@ static void defineTexStyle(const StyleDefinition &style, FILE* fp, int istyle) {
 
 void SciTEBase::SaveToTEX(const FilePath &saveName) {
 	RemoveFindMarks();
-	wEditor.Call(SCI_COLOURISE, 0, -1);
+	wEditor_.Call(SCI_COLOURISE, 0, -1);
 	int tabSize = props.GetInt("tabsize");
 	if (tabSize == 0)
 		tabSize = 4;
 
 	const int lengthDoc = LengthDocument();
-	TextReader acc(wEditor);
+	TextReader acc(wEditor_);
 	bool styleIsUsed[STYLE_MAX + 1];
 
 	const int titleFullPath = props.GetInt("export.tex.title.fullpath", 0);
@@ -144,7 +144,7 @@ void SciTEBase::SaveToTEX(const FilePath &saveName) {
 
 		fputs("\\begin{document}\n\n", fp);
 		fprintf(fp, "Source File: %s\n\n\\noindent\n\\small{\n",
-		        titleFullPath ? filePath.AsUTF8().c_str() : filePath.Name().AsUTF8().c_str());
+		        titleFullPath ? filePath_.AsUTF8().c_str() : filePath_.Name().AsUTF8().c_str());
 
 		int styleCurrent = acc.StyleAt(0);
 

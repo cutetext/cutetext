@@ -20,14 +20,14 @@
 TextReader::TextReader(GUI::ScintillaWindow &sw_) :
 	startPos(extremePosition),
 	endPos(0),
-	codePage(0),
+	codePage_(0),
 	sw(sw_),
 	lenDoc(-1) {
 	buf[0] = 0;
 }
 
 bool TextReader::InternalIsLeadByte(char ch) const {
-	return GUI::IsDBCSLeadByte(codePage, ch);
+	return GUI::IsDBCSLeadByte(codePage_, ch);
 }
 
 void TextReader::Fill(int position) {

@@ -52,7 +52,7 @@
 
 void SciTEBase::SaveToHTML(const FilePath &saveName) {
 	RemoveFindMarks();
-	wEditor.Call(SCI_COLOURISE, 0, -1);
+	wEditor_.Call(SCI_COLOURISE, 0, -1);
 	int tabSize = props.GetInt("tabsize");
 	if (tabSize == 0)
 		tabSize = 4;
@@ -63,7 +63,7 @@ void SciTEBase::SaveToHTML(const FilePath &saveName) {
 	const int titleFullPath = props.GetInt("export.html.title.fullpath", 0);
 
 	const int lengthDoc = LengthDocument();
-	TextReader acc(wEditor);
+	TextReader acc(wEditor_);
 
 	bool styleIsUsed[STYLE_MAX + 1];
 	if (onlyStylesUsed) {
@@ -90,14 +90,14 @@ void SciTEBase::SaveToHTML(const FilePath &saveName) {
 		fputs("<head>\n", fp);
 		if (titleFullPath)
 			fprintf(fp, "<title>%s</title>\n",
-			        filePath.AsUTF8().c_str());
+			        filePath_.AsUTF8().c_str());
 		else
 			fprintf(fp, "<title>%s</title>\n",
-			        filePath.Name().AsUTF8().c_str());
+			        filePath_.Name().AsUTF8().c_str());
 		// Probably not used by robots, but making a little advertisement for those looking
 		// at the source code doesn't hurt...
 		fputs("<meta name=\"Generator\" content=\"SciTE - www.Scintilla.org\" />\n", fp);
-		if (codePage == SC_CP_UTF8)
+		if (codePage_ == SC_CP_UTF8)
 			fputs("<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" />\n", fp);
 
 		if (folding) {
