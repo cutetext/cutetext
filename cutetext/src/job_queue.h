@@ -62,7 +62,7 @@ public:
 	bool executing;
 	enum { commandMax = 2 };
 	int commandCurrent;
-	std::vector<Job> jobQueue;
+	std::vector<Job> jobQueue_;
 	bool jobUsesOutputPane;
 	long cancelFlag;
 	bool timeCommands;

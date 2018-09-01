@@ -419,14 +419,14 @@ void SciTEBase::SaveToPDF(const FilePath &saveName) {
 	RemoveFindMarks();
 	wEditor_.Call(SCI_COLOURISE, 0, -1);
 	// read exporter flags
-	int tabSize = props.GetInt("tabsize", PDF_TAB_DEFAULT);
+	int tabSize = props_.GetInt("tabsize", PDF_TAB_DEFAULT);
 	if (tabSize < 0) {
 		tabSize = PDF_TAB_DEFAULT;
 	}
 	// read magnification value to add to default screen font size
-	pr.fontSize = props.GetInt("export.pdf.magnification");
+	pr.fontSize = props_.GetInt("export.pdf.magnification");
 	// set font family according to face name
-	std::string propItem = props.GetExpandedString("export.pdf.font");
+	std::string propItem = props_.GetExpandedString("export.pdf.font");
 	pr.fontSet = PDF_FONT_DEFAULT;
 	if (propItem.length()) {
 		if (propItem == "Courier")
@@ -437,7 +437,7 @@ void SciTEBase::SaveToPDF(const FilePath &saveName) {
 			pr.fontSet = 2;
 	}
 	// page size: width, height
-	propItem = props.GetExpandedString("export.pdf.pagesize");
+	propItem = props_.GetExpandedString("export.pdf.pagesize");
 	char buffer[200];
 	const char *ps = propItem.c_str();
 	const char *next = GetNextPropItem(ps, buffer, 32);
@@ -449,7 +449,7 @@ void SciTEBase::SaveToPDF(const FilePath &saveName) {
 		pr.pageHeight = PDF_HEIGHT_DEFAULT;
 	}
 	// page margins: left, right, top, bottom
-	propItem = props.GetExpandedString("export.pdf.margins");
+	propItem = props_.GetExpandedString("export.pdf.margins");
 	ps = propItem.c_str();
 	next = GetNextPropItem(ps, buffer, 32);
 	if (0 >= (pr.pageMargin.left = static_cast<int>(atol(buffer)))) {

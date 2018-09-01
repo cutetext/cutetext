@@ -105,7 +105,7 @@ static void defineTexStyle(const StyleDefinition &style, FILE* fp, int istyle) {
 void SciTEBase::SaveToTEX(const FilePath &saveName) {
 	RemoveFindMarks();
 	wEditor_.Call(SCI_COLOURISE, 0, -1);
-	int tabSize = props.GetInt("tabsize");
+	int tabSize = props_.GetInt("tabsize");
 	if (tabSize == 0)
 		tabSize = 4;
 
@@ -113,7 +113,7 @@ void SciTEBase::SaveToTEX(const FilePath &saveName) {
 	TextReader acc(wEditor_);
 	bool styleIsUsed[STYLE_MAX + 1];
 
-	const int titleFullPath = props.GetInt("export.tex.title.fullpath", 0);
+	const int titleFullPath = props_.GetInt("export.tex.title.fullpath", 0);
 
 	int i;
 	for (i = 0; i <= STYLE_MAX; i++) {

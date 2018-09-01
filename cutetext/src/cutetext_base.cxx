@@ -41,7 +41,7 @@
 #include "style_definition.h"
 #include "propset_file.h"
 #include "style_writer.h"
-#include "extender.h"
+#include "extender_.h"
 #include "cutetext.h"
 #include "mutex.h"
 #include "job_queue.h"
@@ -272,7 +272,7 @@ std::string CuteTextBase::GetTranslationToAbout(const char * const propname, boo
 #if !defined(GTK)
 	return GUI::UTF8FromString(localiser_.Text(propname, retainIfNotFound));
 #else
-	// On GTK+, localiser.Text always converts to UTF-8.
+	// On GTK+, localiser_.Text always converts to UTF-8.
 	return localiser_.Text(propname, retainIfNotFound);
 #endif
 }
@@ -566,11 +566,11 @@ bool CuteTextBase::FindMatchingBracePosition(bool editor, int &braceAtCaret, int
 }
 
 void CuteTextBase::BraceMatch(bool editor) {
-	if (!bracesCheck)
+	if (!bracesCheck_)
 		return;
 	int braceAtCaret = -1;
 	int braceOpposite = -1;
-	FindMatchingBracePosition(editor, braceAtCaret, braceOpposite, bracesSloppy);
+	FindMatchingBracePosition(editor, braceAtCaret, braceOpposite, bracesSloppy_);
 	GUI::ScintillaWindow &win = editor ? wEditor_ : wOutput_;
 	if ((braceAtCaret != -1) && (braceOpposite == -1)) {
 		win.Call(SCI_BRACEBADLIGHT, braceAtCaret, 0);
@@ -602,23 +602,23 @@ void CuteTextBase::BraceMatch(bool editor) {
 			}
 		}
 
-		if (props.GetInt("highlight.indentation.guides"))
+		if (props_.GetInt("highlight.indentation.guides"))
 			win.Call(SCI_SETHIGHLIGHTGUIDE, Minimum(columnAtCaret, columnOpposite), 0);
 	}
 }
 
 void CuteTextBase::SetWindowName() {
 	if (filePath_.IsUntitled()) {
-		windowName_ = localiser.Text("Untitled");
+		windowName_ = localiser_.Text("Untitled");
 		windowName_.insert(0, GUI_TEXT("("));
 		windowName_ += GUI_TEXT(")");
-	} else if (props.GetInt("title.full.path") == 2) {
+	} else if (props_.GetInt("title.full.path") == 2) {
 		windowName_ = FileNameExt().AsInternal();
 		windowName_ += GUI_TEXT(" ");
-		windowName_ += localiser.Text("in");
+		windowName_ += localiser_.Text("in");
 		windowName_ += GUI_TEXT(" ");
 		windowName_ += filePath_.Directory().AsInternal();
-	} else if (props.GetInt("title.full.path") == 1) {
+	} else if (props_.GetInt("title.full.path") == 1) {
 		windowName_ = filePath_.AsInternal();
 	} else {
 		windowName_ = FileNameExt().AsInternal();
@@ -629,13 +629,13 @@ void CuteTextBase::SetWindowName() {
 		windowName_ += GUI_TEXT(" - ");
 	windowName_ += appName;
 
-	if (buffers.length > 1 && props.GetInt("title.show.buffers")) {
+	if (buffers_.length > 1 && props_.GetInt("title.show.buffers")) {
 		windowName_ += GUI_TEXT(" [");
-		windowName_ += GUI::StringFromInteger(buffers.Current() + 1);
+		windowName_ += GUI::StringFromInteger(buffers_.Current() + 1);
 		windowName_ += GUI_TEXT(" ");
-		windowName_ += localiser.Text("of");
+		windowName_ += localiser_.Text("of");
 		windowName_ += GUI_TEXT(" ");
-		windowName_ += GUI::StringFromInteger(buffers.length);
+		windowName_ += GUI::StringFromInteger(buffers_.length);
 		windowName_ += GUI_TEXT("]");
 	}
 
@@ -662,9 +662,9 @@ std::string CuteTextBase::GetCTag() {
 	int mustStop = 0;
 	char c;
 
-	lengthDoc = pwFocussed->Call(SCI_GETLENGTH);
-	selStart = selEnd = pwFocussed->Call(SCI_GETSELECTIONEND);
-	TextReader acc(*pwFocussed);
+	lengthDoc = pwFocussed_->Call(SCI_GETLENGTH);
+	selStart = selEnd = pwFocussed_->Call(SCI_GETSELECTIONEND);
+	TextReader acc(*pwFocussed_);
 	while (!mustStop) {
 		if (selStart < lengthDoc - 1) {
 			selStart++;
@@ -704,7 +704,7 @@ std::string CuteTextBase::GetCTag() {
 	}
 
 	if (selStart < selEnd) {
-		return GetRangeString(*pwFocussed, selStart, selEnd);
+		return GetRangeString(*pwFocussed_, selStart, selEnd);
 	} else {
 		return std::string();
 	}
@@ -726,8 +726,8 @@ bool CuteTextBase::isfilenamecharforsel(char ch) {
 
 bool CuteTextBase::islexerwordcharforsel(char ch) {
 	// If there are no word.characters defined for the current file, fall back on the original function
-	if (wordCharacters.length())
-		return Contains(wordCharacters, ch);
+	if (wordCharacters_.length())
+		return Contains(wordCharacters_, ch);
 	else
 		return iswordcharforsel(ch);
 }
@@ -857,9 +857,9 @@ std::string CuteTextBase::SelectionExtend(
     bool (CuteTextBase::*ischarforsel)(char ch),	///< Function returning @c true if the given char. is part of the selection.
     bool stripEol /*=true*/) {
 
-	int selStart = pwFocussed->Call(SCI_GETSELECTIONSTART);
-	int selEnd = pwFocussed->Call(SCI_GETSELECTIONEND);
-	return RangeExtendAndGrab(*pwFocussed, selStart, selEnd, ischarforsel, stripEol);
+	int selStart = pwFocussed_->Call(SCI_GETSELECTIONSTART);
+	int selEnd = pwFocussed_->Call(SCI_GETSELECTIONEND);
+	return RangeExtendAndGrab(*pwFocussed_, selStart, selEnd, ischarforsel, stripEol);
 }
 
 std::string CuteTextBase::SelectionWord(bool stripEol /*=true*/) {
@@ -872,17 +872,17 @@ std::string CuteTextBase::SelectionFilename() {
 
 void CuteTextBase::SelectionIntoProperties() {
 	std::string currentSelection = SelectionExtend(0, false);
-	props.Set("CurrentSelection", currentSelection.c_str());
+	props_.Set("CurrentSelection", currentSelection.c_str());
 
 	std::string word = SelectionWord();
-	props.Set("CurrentWord", word.c_str());
+	props_.Set("CurrentWord", word.c_str());
 
 	const int selStart = CallFocused(SCI_GETSELECTIONSTART);
 	const int selEnd = CallFocused(SCI_GETSELECTIONEND);
-	props.SetInteger("SelectionStartLine", CallFocused(SCI_LINEFROMPOSITION, selStart) + 1);
-	props.SetInteger("SelectionStartColumn", CallFocused(SCI_GETCOLUMN, selStart) + 1);
-	props.SetInteger("SelectionEndLine", CallFocused(SCI_LINEFROMPOSITION, selEnd) + 1);
-	props.SetInteger("SelectionEndColumn", CallFocused(SCI_GETCOLUMN, selEnd) + 1);
+	props_.SetInteger("SelectionStartLine", CallFocused(SCI_LINEFROMPOSITION, selStart) + 1);
+	props_.SetInteger("SelectionStartColumn", CallFocused(SCI_GETCOLUMN, selStart) + 1);
+	props_.SetInteger("SelectionEndLine", CallFocused(SCI_LINEFROMPOSITION, selEnd) + 1);
+	props_.SetInteger("SelectionEndColumn", CallFocused(SCI_GETCOLUMN, selEnd) + 1);
 }
 
 void CuteTextBase::SelectionIntoFind(bool stripEol /*=true*/) {
@@ -901,21 +901,21 @@ void CuteTextBase::SelectionIntoFind(bool stripEol /*=true*/) {
 
 void CuteTextBase::SelectionAdd(AddSelection add) {
 	int flags = 0;
-	if (!pwFocussed->Call(SCI_GETSELECTIONEMPTY)) {
+	if (!pwFocussed_->Call(SCI_GETSELECTIONEMPTY)) {
 		// If selection is word then match as word.
-		if (pwFocussed->Call(SCI_ISRANGEWORD, pwFocussed->Call(SCI_GETSELECTIONSTART),
-			pwFocussed->Call(SCI_GETSELECTIONEND)))
+		if (pwFocussed_->Call(SCI_ISRANGEWORD, pwFocussed_->Call(SCI_GETSELECTIONSTART),
+			pwFocussed_->Call(SCI_GETSELECTIONEND)))
 			flags = SCFIND_WHOLEWORD;
 	}
-	pwFocussed->Call(SCI_TARGETWHOLEDOCUMENT);
-	pwFocussed->Call(SCI_SETSEARCHFLAGS, flags);
+	pwFocussed_->Call(SCI_TARGETWHOLEDOCUMENT);
+	pwFocussed_->Call(SCI_SETSEARCHFLAGS, flags);
 	if (add == kAddNext) {
-		pwFocussed->Call(SCI_MULTIPLESELECTADDNEXT);
+		pwFocussed_->Call(SCI_MULTIPLESELECTADDNEXT);
 	} else {
-		if (pwFocussed->Call(SCI_GETSELECTIONEMPTY)) {
-			pwFocussed->Call(SCI_MULTIPLESELECTADDNEXT);
+		if (pwFocussed_->Call(SCI_GETSELECTIONEMPTY)) {
+			pwFocussed_->Call(SCI_MULTIPLESELECTADDNEXT);
 		}
-		pwFocussed->Call(SCI_MULTIPLESELECTADDEACH);
+		pwFocussed_->Call(SCI_MULTIPLESELECTADDEACH);
 	}
 }
 
@@ -952,8 +952,8 @@ int CuteTextBase::SearchFlags(bool regularExpressions) const {
 	return (wholeWord ? SCFIND_WHOLEWORD : 0) |
 	        (matchCase ? SCFIND_MATCHCASE : 0) |
 	        (regularExpressions ? SCFIND_REGEXP : 0) |
-	        (props.GetInt("find.replace.regexp.posix") ? SCFIND_POSIX : 0) |
-		(props.GetInt("find.replace.regexp.cpp11") ? SCFIND_CXX11REGEX : 0);
+	        (props_.GetInt("find.replace.regexp.posix") ? SCFIND_POSIX : 0) |
+		(props_.GetInt("find.replace.regexp.cpp11") ? SCFIND_CXX11REGEX : 0);
 }
 
 void CuteTextBase::MarkAll(MarkPurpose purpose) {
@@ -962,18 +962,18 @@ void CuteTextBase::MarkAll(MarkPurpose purpose) {
 	if (purpose == kMarkIncremental) {
 		CurrentBuffer()->findMarks = Buffer::kFmTemporary;
 		SetOneIndicator(wEditor_, kIndicatorMatch,
-			IndicatorDefinition(props.GetString("find.indicator.incremental")));
+			IndicatorDefinition(props_.GetString("find.indicator.incremental")));
 	} else {
 		CurrentBuffer()->findMarks = Buffer::kFmMarked;
-		std::string findIndicatorString = props.GetString("find.mark.indicator");
+		std::string findIndicatorString = props_.GetString("find.mark.indicator");
 		IndicatorDefinition findIndicator(findIndicatorString);
 		if (!findIndicatorString.length()) {
 			findIndicator.style = INDIC_ROUNDBOX;
-			std::string findMark = props.GetString("find.mark");
+			std::string findMark = props_.GetString("find.mark");
 			if (findMark.length())
 				findIndicator.colour = ColourFromString(findMark);
-			findIndicator.fillAlpha = alphaIndicator;
-			findIndicator.under = underIndicator;
+			findIndicator.fillAlpha = alphaIndicator_;
+			findIndicator.under = underIndicator_;
 		}
 		SetOneIndicator(wEditor_, kIndicatorMatch, findIndicator);
 	}
@@ -1001,7 +1001,7 @@ void CuteTextBase::FailedSaveMessageBox(const FilePath &filePathSaving) {
 }
 
 bool CuteTextBase::FindReplaceAdvanced() const {
-	return props.GetInt("find.replace.advanced");
+	return props_.GetInt("find.replace.advanced");
 }
 
 int CuteTextBase::FindInTarget(const std::string &findWhatText, int startPosition, int endPosition) {
@@ -1024,7 +1024,7 @@ int CuteTextBase::FindInTarget(const std::string &findWhatText, int startPositio
 
 void CuteTextBase::SetFindText(const char *sFind) {
 	findWhat = sFind;
-	props.Set("find.what", findWhat.c_str());
+	props_.Set("find.what", findWhat.c_str());
 }
 
 void CuteTextBase::SetFind(const char *sFind) {
@@ -1259,7 +1259,7 @@ int CuteTextBase::DoReplaceAll(bool inSelection) {
 
 int CuteTextBase::ReplaceAll(bool inSelection) {
 	const int replacements = DoReplaceAll(inSelection);
-	props.SetInteger("Replacements", (replacements > 0 ? replacements : 0));
+	props_.SetInteger("Replacements", (replacements > 0 ? replacements : 0));
 	UpdateStatusBar(false);
 	if (replacements == -1) {
 		FindMessageBox(
@@ -1277,9 +1277,9 @@ int CuteTextBase::ReplaceAll(bool inSelection) {
 }
 
 int CuteTextBase::ReplaceInBuffers() {
-	const int currentBuffer = buffers.Current();
+	const int currentBuffer = buffers_.Current();
 	int replacements = 0;
-	for (int i = 0; i < buffers.length; i++) {
+	for (int i = 0; i < buffers_.length; i++) {
 		SetDocumentAt(i);
 		replacements += DoReplaceAll(false);
 		if (i == 0 && replacements < 0) {
@@ -1289,7 +1289,7 @@ int CuteTextBase::ReplaceInBuffers() {
 		}
 	}
 	SetDocumentAt(currentBuffer);
-	props.SetInteger("Replacements", replacements);
+	props_.SetInteger("Replacements", replacements);
 	UpdateStatusBar(false);
 	if (replacements == 0) {
 		FindMessageBox(
@@ -1311,7 +1311,7 @@ void CuteTextBase::OutputAppendString(const char *s, int len) {
 	if (len == -1)
 		len = static_cast<int>(strlen(s));
 	wOutput_.CallString(SCI_APPENDTEXT, len, s);
-	if (scrollOutput) {
+	if (scrollOutput_) {
 		const int line = wOutput_.Call(SCI_GETLINECOUNT, 0, 0);
 		const int lineStart = wOutput_.Call(SCI_POSITIONFROMLINE, line);
 		wOutput_.Call(SCI_GOTOPOS, lineStart);
@@ -1322,7 +1322,7 @@ void CuteTextBase::OutputAppendStringSynchronised(const char *s, int len) {
 	if (len == -1)
 		len = static_cast<int>(strlen(s));
 	wOutput_.Send(SCI_APPENDTEXT, len, SptrFromString(s));
-	if (scrollOutput) {
+	if (scrollOutput_) {
 		const sptr_t line = wOutput_.Send(SCI_GETLINECOUNT);
 		const sptr_t lineStart = wOutput_.Send(SCI_POSITIONFROMLINE, line);
 		wOutput_.Send(SCI_GOTOPOS, lineStart);
@@ -1330,49 +1330,49 @@ void CuteTextBase::OutputAppendStringSynchronised(const char *s, int len) {
 }
 
 void CuteTextBase::Execute() {
-	props.Set("CurrentMessage", "");
+	props_.Set("CurrentMessage", "");
 	dirNameForExecute_ = FilePath();
 	bool displayParameterDialog = false;
 	int ic;
 	parameterisedCommand_ = "";
-	for (ic = 0; ic < jobQueue.commandMax; ic++) {
-		if (StartsWith(jobQueue.jobQueue[ic].command, "*")) {
+	for (ic = 0; ic < jobQueue_.commandMax; ic++) {
+		if (StartsWith(jobQueue_.jobQueue_[ic].command, "*")) {
 			displayParameterDialog = true;
-			jobQueue.jobQueue[ic].command.erase(0, 1);
-			parameterisedCommand_ = jobQueue.jobQueue[ic].command;
+			jobQueue_.jobQueue_[ic].command.erase(0, 1);
+			parameterisedCommand_ = jobQueue_.jobQueue_[ic].command;
 		}
-		if (jobQueue.jobQueue[ic].directory.IsSet()) {
-			dirNameForExecute_ = jobQueue.jobQueue[ic].directory;
+		if (jobQueue_.jobQueue_[ic].directory.IsSet()) {
+			dirNameForExecute_ = jobQueue_.jobQueue_[ic].directory;
 		}
 	}
 	if (displayParameterDialog) {
 		if (!ParametersDialog(true)) {
-			jobQueue.ClearJobs();
+			jobQueue_.ClearJobs();
 			return;
 		}
 	} else {
 		ParamGrab();
 	}
-	for (ic = 0; ic < jobQueue.commandMax; ic++) {
-		if (jobQueue.jobQueue[ic].jobType != jobGrep) {
-			jobQueue.jobQueue[ic].command = props.Expand(jobQueue.jobQueue[ic].command);
+	for (ic = 0; ic < jobQueue_.commandMax; ic++) {
+		if (jobQueue_.jobQueue_[ic].jobType != jobGrep) {
+			jobQueue_.jobQueue_[ic].command = props_.Expand(jobQueue_.jobQueue_[ic].command);
 		}
 	}
 
-	if (jobQueue.ClearBeforeExecute()) {
+	if (jobQueue_.ClearBeforeExecute()) {
 		wOutput_.Call(SCI_CLEARALL);
 	}
 
 	wOutput_.Call(SCI_MARKERDELETEALL, static_cast<uptr_t>(-1));
 	wEditor_.Call(SCI_MARKERDELETEALL, 0);
 	// Ensure the output pane is visible
-	if (jobQueue.ShowOutputPane()) {
+	if (jobQueue_.ShowOutputPane()) {
 		SetOutputVisibility(true);
 	}
 
-	jobQueue.cancelFlag = 0L;
-	if (jobQueue.HasCommandToRun()) {
-		jobQueue.SetExecuting(true);
+	jobQueue_.cancelFlag = 0L;
+	if (jobQueue_.HasCommandToRun()) {
+		jobQueue_.SetExecuting(true);
 	}
 	CheckMenus();
 	dirNameAtExecute_ = filePath_.Directory();
@@ -1380,20 +1380,20 @@ void CuteTextBase::Execute() {
 
 void CuteTextBase::SetOutputVisibility(bool show) {
 	if (show) {
-		if (heightOutput <= 0) {
-			if (previousHeightOutput < 20) {
-				if (splitVertical)
-					heightOutput = NormaliseSplit(300);
+		if (heightOutput_ <= 0) {
+			if (previousHeightOutput_ < 20) {
+				if (splitVertical_)
+					heightOutput_ = NormaliseSplit(300);
 				else
-					heightOutput = NormaliseSplit(100);
-				previousHeightOutput = heightOutput;
+					heightOutput_ = NormaliseSplit(100);
+				previousHeightOutput_ = heightOutput_;
 			} else {
-				heightOutput = NormaliseSplit(previousHeightOutput);
+				heightOutput_ = NormaliseSplit(previousHeightOutput_);
 			}
 		}
 	} else {
-		if (heightOutput > 0) {
-			heightOutput = NormaliseSplit(0);
+		if (heightOutput_ > 0) {
+			heightOutput_ = NormaliseSplit(0);
 			WindowSetFocus(wEditor_);
 		}
 	}
@@ -1408,7 +1408,7 @@ void CuteTextBase::ShowOutputOnMainThread() {
 }
 
 void CuteTextBase::ToggleOutputVisible() {
-	SetOutputVisibility(heightOutput <= 0);
+	SetOutputVisibility(heightOutput_ <= 0);
 }
 
 void CuteTextBase::BookmarkAdd(int lineno) {
@@ -1509,67 +1509,67 @@ std::string CuteTextBase::GetNearestWords(const char *wordStart, size_t searchLe
 
 void CuteTextBase::FillFunctionDefinition(int pos /*= -1*/) {
 	if (pos > 0) {
-		lastPosCallTip = pos;
+		lastPosCallTip_ = pos;
 	}
 	if (apis_) {
-		std::string words = GetNearestWords(currentCallTipWord.c_str(), currentCallTipWord.length(),
-			calltipParametersStart.c_str(), callTipIgnoreCase, true);
+		std::string words = GetNearestWords(currentCallTipWord_.c_str(), currentCallTipWord_.length(),
+			calltipParametersStart_.c_str(), callTipIgnoreCase_, true);
 		if (words.empty())
 			return;
 		// Counts how many call tips
-		maxCallTips = static_cast<int>(std::count(words.begin(), words.end(), ' ') + 1);
+		maxCallTips_ = static_cast<int>(std::count(words.begin(), words.end(), ' ') + 1);
 
 		// Should get current api definition
-		std::string word = apis_.GetNearestWord(currentCallTipWord.c_str(), currentCallTipWord.length(),
-		        callTipIgnoreCase, calltipWordCharacters, currentCallTip);
+		std::string word = apis_.GetNearestWord(currentCallTipWord_.c_str(), currentCallTipWord_.length(),
+		        callTipIgnoreCase_, calltipWordCharacters_, currentCallTip_);
 		if (word.length()) {
 			functionDefinition_ = word;
-			if (maxCallTips > 1) {
+			if (maxCallTips_ > 1) {
 				functionDefinition_.insert(0, "\001");
 			}
 
-			if (calltipEndDefinition != "") {
-				const size_t posEndDef = functionDefinition_.find(calltipEndDefinition.c_str());
-				if (maxCallTips > 1) {
+			if (calltipEndDefinition_ != "") {
+				const size_t posEndDef = functionDefinition_.find(calltipEndDefinition_.c_str());
+				if (maxCallTips_ > 1) {
 					if (posEndDef != std::string::npos) {
-						functionDefinition_.insert(posEndDef + calltipEndDefinition.length(), "\n\002");
+						functionDefinition_.insert(posEndDef + calltipEndDefinition_.length(), "\n\002");
 					} else {
 						functionDefinition_.append("\n\002");
 					}
 				} else {
 					if (posEndDef != std::string::npos) {
-						functionDefinition_.insert(posEndDef + calltipEndDefinition.length(), "\n");
+						functionDefinition_.insert(posEndDef + calltipEndDefinition_.length(), "\n");
 					}
 				}
-			} else if (maxCallTips > 1) {
+			} else if (maxCallTips_ > 1) {
 				functionDefinition_.insert(1, "\002");
 			}
 
 			std::string definitionForDisplay;
-			if (callTipUseEscapes) {
+			if (callTipUseEscapes_) {
 				definitionForDisplay = UnSlashString(functionDefinition_.c_str());
 			} else {
 				definitionForDisplay = functionDefinition_;
 			}
 
-			wEditor_.CallString(SCI_CALLTIPSHOW, lastPosCallTip - currentCallTipWord.length(), definitionForDisplay.c_str());
+			wEditor_.CallString(SCI_CALLTIPSHOW, lastPosCallTip_ - currentCallTipWord_.length(), definitionForDisplay.c_str());
 			ContinueCallTip();
 		}
 	}
 }
 
 bool CuteTextBase::StartCallTip() {
-	currentCallTip = 0;
-	currentCallTipWord = "";
+	currentCallTip_ = 0;
+	currentCallTipWord_ = "";
 	std::string line = GetCurrentLine();
 	int current = GetCaretInLine();
 	int pos = wEditor_.Call(SCI_GETCURRENTPOS);
 	do {
 		int braces = 0;
-		while (current > 0 && (braces || !Contains(calltipParametersStart, line[current - 1]))) {
-			if (Contains(calltipParametersStart, line[current - 1]))
+		while (current > 0 && (braces || !Contains(calltipParametersStart_, line[current - 1]))) {
+			if (Contains(calltipParametersStart_, line[current - 1]))
 				braces--;
-			else if (Contains(calltipParametersEnd, line[current - 1]))
+			else if (Contains(calltipParametersEnd_, line[current - 1]))
 				braces++;
 			current--;
 			pos--;
@@ -1583,18 +1583,18 @@ bool CuteTextBase::StartCallTip() {
 			current--;
 			pos--;
 		}
-	} while (current > 0 && !Contains(calltipWordCharacters, line[current - 1]));
+	} while (current > 0 && !Contains(calltipWordCharacters_, line[current - 1]));
 	if (current <= 0)
 		return true;
 
-	startCalltipWord = current - 1;
-	while (startCalltipWord > 0 &&
-	        Contains(calltipWordCharacters, line[startCalltipWord - 1])) {
-		startCalltipWord--;
+	startCalltipWord_ = current - 1;
+	while (startCalltipWord_ > 0 &&
+	        Contains(calltipWordCharacters_, line[startCalltipWord_ - 1])) {
+		startCalltipWord_--;
 	}
 
 	line.at(current) = '\0';
-	currentCallTipWord = line.c_str() + startCalltipWord;
+	currentCallTipWord_ = line.c_str() + startCalltipWord_;
 	functionDefinition_ = "";
 	FillFunctionDefinition(pos);
 	return true;
@@ -1606,36 +1606,36 @@ void CuteTextBase::ContinueCallTip() {
 
 	int braces = 0;
 	int commas = 0;
-	for (int i = startCalltipWord; i < current; i++) {
-		if (Contains(calltipParametersStart, line[i]))
+	for (int i = startCalltipWord_; i < current; i++) {
+		if (Contains(calltipParametersStart_, line[i]))
 			braces++;
-		else if (Contains(calltipParametersEnd, line[i]) && braces > 0)
+		else if (Contains(calltipParametersEnd_, line[i]) && braces > 0)
 			braces--;
-		else if (braces == 1 && Contains(calltipParametersSeparators, line[i]))
+		else if (braces == 1 && Contains(calltipParametersSeparators_, line[i]))
 			commas++;
 	}
 
 	size_t startHighlight = 0;
-	while ((startHighlight < functionDefinition_.length()) && !Contains(calltipParametersStart, functionDefinition_[startHighlight]))
+	while ((startHighlight < functionDefinition_.length()) && !Contains(calltipParametersStart_, functionDefinition_[startHighlight]))
 		startHighlight++;
-	if ((startHighlight < functionDefinition_.length()) && Contains(calltipParametersStart, functionDefinition_[startHighlight]))
+	if ((startHighlight < functionDefinition_.length()) && Contains(calltipParametersStart_, functionDefinition_[startHighlight]))
 		startHighlight++;
 	while ((startHighlight < functionDefinition_.length()) && commas > 0) {
-		if (Contains(calltipParametersSeparators, functionDefinition_[startHighlight]))
+		if (Contains(calltipParametersSeparators_, functionDefinition_[startHighlight]))
 			commas--;
 		// If it reached the end of the argument list it means that the user typed in more
 		// arguments than the ones listed in the calltip
-		if (Contains(calltipParametersEnd, functionDefinition_[startHighlight]))
+		if (Contains(calltipParametersEnd_, functionDefinition_[startHighlight]))
 			commas = 0;
 		else
 			startHighlight++;
 	}
-	if ((startHighlight < functionDefinition_.length()) && Contains(calltipParametersSeparators, functionDefinition_[startHighlight]))
+	if ((startHighlight < functionDefinition_.length()) && Contains(calltipParametersSeparators_, functionDefinition_[startHighlight]))
 		startHighlight++;
 	size_t endHighlight = startHighlight;
-	while ((endHighlight < functionDefinition_.length()) && !Contains(calltipParametersSeparators, functionDefinition_[endHighlight]) && !Contains(calltipParametersEnd, functionDefinition_[endHighlight]))
+	while ((endHighlight < functionDefinition_.length()) && !Contains(calltipParametersSeparators_, functionDefinition_[endHighlight]) && !Contains(calltipParametersEnd_, functionDefinition_[endHighlight]))
 		endHighlight++;
-	if (callTipUseEscapes) {
+	if (callTipUseEscapes_) {
 		std::string sPreHighlight = functionDefinition_.substr(0, startHighlight);
 		std::vector<char> vPreHighlight(sPreHighlight.c_str(), sPreHighlight.c_str() + sPreHighlight.length() + 1);
 		const int unslashedStartHighlight = UnSlash(&vPreHighlight[0]);
@@ -1688,15 +1688,15 @@ bool CuteTextBase::StartAutoComplete() {
 	int startword = current;
 
 	while ((startword > 0) &&
-	        (Contains(calltipWordCharacters, line[startword - 1]) ||
-		Contains(autoCompleteStartCharacters, line[startword - 1]))) {
+	        (Contains(calltipWordCharacters_, line[startword - 1]) ||
+		Contains(autoCompleteStartCharacters_, line[startword - 1]))) {
 		startword--;
 	}
 
 	std::string root = line.substr(startword, current - startword);
 	if (apis_) {
 		std::string words = GetNearestWords(root.c_str(), root.length(),
-			calltipParametersStart.c_str(), autoCompleteIgnoreCase);
+			calltipParametersStart_.c_str(), autoCompleteIgnoreCase_);
 		if (words.length()) {
 			EliminateDuplicateWords(words);
 			wEditor_.Call(SCI_AUTOCSETSEPARATOR, ' ');
@@ -1713,7 +1713,7 @@ bool CuteTextBase::StartAutoCompleteWord(bool onlyOneWord) {
 	int startword = current;
 	// Autocompletion of pure numbers is mostly an annoyance
 	bool allNumber = true;
-	while (startword > 0 && Contains(wordCharacters, line[startword - 1])) {
+	while (startword > 0 && Contains(wordCharacters_, line[startword - 1])) {
 		startword--;
 		if (line[startword] < '0' || line[startword] > '9') {
 			allNumber = false;
@@ -1729,7 +1729,7 @@ bool CuteTextBase::StartAutoCompleteWord(bool onlyOneWord) {
 	ft.chrg.cpMax = doclen;
 	ft.chrgText.cpMin = 0;
 	ft.chrgText.cpMax = 0;
-	const int flags = SCFIND_WORDSTART | (autoCompleteIgnoreCase ? 0 : SCFIND_MATCHCASE);
+	const int flags = SCFIND_WORDSTART | (autoCompleteIgnoreCase_ ? 0 : SCFIND_MATCHCASE);
 	const int posCurrentWord = wEditor_.Call(SCI_GETCURRENTPOS) - static_cast<int>(root.length());
 	unsigned int minWordLength = 0;
 	unsigned int nwords = 0;
@@ -1744,7 +1744,7 @@ bool CuteTextBase::StartAutoCompleteWord(bool onlyOneWord) {
 	while (posFind >= 0 && posFind < doclen) {	// search all the document
 		int wordEnd = posFind + static_cast<int>(root.length());
 		if (posFind != posCurrentWord) {
-			while (Contains(wordCharacters, acc.SafeGetCharAt(wordEnd)))
+			while (Contains(wordCharacters_, acc.SafeGetCharAt(wordEnd)))
 				wordEnd++;
 			const unsigned int wordLength = wordEnd - posFind;
 			if (wordLength > root.length()) {
@@ -1772,7 +1772,7 @@ bool CuteTextBase::StartAutoCompleteWord(bool onlyOneWord) {
 		std::replace(wordsNear.begin(), wordsNear.end(), ' ', '\001');
 		StringList wl(true);
 		wl.Set(wordsNear.c_str());
-		std::string acText = wl.GetNearestWords("", 0, autoCompleteIgnoreCase);
+		std::string acText = wl.GetNearestWords("", 0, autoCompleteIgnoreCase_);
 		// Use \n as word separator
 		std::replace(acText.begin(), acText.end(), ' ', '\n');
 		// Return spaces from \001
@@ -1786,7 +1786,7 @@ bool CuteTextBase::StartAutoCompleteWord(bool onlyOneWord) {
 }
 
 bool CuteTextBase::PerformInsertAbbreviation() {
-	const std::string data = propsAbbrev.GetString(abbrevInsert_.c_str());
+	const std::string data = propsAbbrev_.GetString(abbrevInsert_.c_str());
 	if (data.empty()) {
 		return true; // returning if expanded abbreviation is empty
 	}
@@ -1807,7 +1807,7 @@ bool CuteTextBase::PerformInsertAbbreviation() {
 	int indentExtra = 0;
 	bool isIndent = true;
 	const int eolMode = wEditor_.Call(SCI_GETEOLMODE);
-	if (props.GetInt("indent.automatic")) {
+	if (props_.GetInt("indent.automatic")) {
 		indent = GetLineIndentation(currentLineNumber);
 	}
 
@@ -1826,7 +1826,7 @@ bool CuteTextBase::PerformInsertAbbreviation() {
 		const char c = expbuf[i];
 		std::string abbrevText("");
 		if (isIndent && c == '\t') {
-			if (props.GetInt("indent.automatic")) {
+			if (props_.GetInt("indent.automatic")) {
 				indentExtra++;
 				SetLineIndentation(currentLineNumber, indent + indentSize * indentExtra);
 				caret_pos += indentSize / indentChars;
@@ -1923,7 +1923,7 @@ bool CuteTextBase::StartExpandAbbreviation() {
 	// We arbitrarily limit the length of an abbreviation (seems a reasonable value..),
 	// and of course stop on the caret.
 	while (abbrevLength > 0) {
-		data = propsAbbrev.GetString(abbrev);
+		data = propsAbbrev_.GetString(abbrev);
 		if (!data.empty()) {
 			break;	/* Found */
 		}
@@ -1946,7 +1946,7 @@ bool CuteTextBase::StartExpandAbbreviation() {
 	int indentExtra = 0;
 	bool isIndent = true;
 	const int eolMode = wEditor_.Call(SCI_GETEOLMODE);
-	if (props.GetInt("indent.automatic")) {
+	if (props_.GetInt("indent.automatic")) {
 		indent = GetLineIndentation(currentLineNumber);
 	}
 
@@ -2012,14 +2012,14 @@ bool CuteTextBase::StartExpandAbbreviation() {
 
 bool CuteTextBase::StartBlockComment() {
 	std::string fileNameForExtension = ExtensionFileName();
-	std::string lexerName = props.GetNewExpandString("lexer.", fileNameForExtension.c_str());
+	std::string lexerName = props_.GetNewExpandString("lexer.", fileNameForExtension.c_str());
 	std::string base("comment.block.");
 	std::string comment_at_line_start("comment.block.at.line.start.");
 	base += lexerName;
 	comment_at_line_start += lexerName;
-	const bool placeCommentsAtLineStart = props.GetInt(comment_at_line_start.c_str()) != 0;
+	const bool placeCommentsAtLineStart = props_.GetInt(comment_at_line_start.c_str()) != 0;
 
-	std::string comment = props.GetString(base.c_str());
+	std::string comment = props_.GetString(base.c_str());
 	if (comment == "") { // user friendly error message box
 		GUI::gui_string sBase = GUI::StringFromUTF8(base);
 		GUI::gui_string error = LocaliseMessage(
@@ -2106,7 +2106,7 @@ static const char *LineEndString(int eolMode) {
 bool CuteTextBase::StartBoxComment() {
 	// Get start/middle/end comment strings from options file(s)
 	std::string fileNameForExtension = ExtensionFileName();
-	std::string lexerName = props.GetNewExpandString("lexer.", fileNameForExtension.c_str());
+	std::string lexerName = props_.GetNewExpandString("lexer.", fileNameForExtension.c_str());
 	std::string start_base("comment.box.start.");
 	std::string middle_base("comment.box.middle.");
 	std::string end_base("comment.box.end.");
@@ -2115,9 +2115,9 @@ bool CuteTextBase::StartBoxComment() {
 	start_base += lexerName;
 	middle_base += lexerName;
 	end_base += lexerName;
-	std::string start_comment = props.GetString(start_base.c_str());
-	std::string middle_comment = props.GetString(middle_base.c_str());
-	std::string end_comment = props.GetString(end_base.c_str());
+	std::string start_comment = props_.GetString(start_base.c_str());
+	std::string middle_comment = props_.GetString(middle_base.c_str());
+	std::string end_comment = props_.GetString(end_base.c_str());
 	if (start_comment == "" || middle_comment == "" || end_comment == "") {
 		GUI::gui_string sStart = GUI::StringFromUTF8(start_base);
 		GUI::gui_string sMiddle = GUI::StringFromUTF8(middle_base);
@@ -2221,14 +2221,14 @@ bool CuteTextBase::StartBoxComment() {
 
 bool CuteTextBase::StartStreamComment() {
 	std::string fileNameForExtension = ExtensionFileName();
-	const std::string lexerName = props.GetNewExpandString("lexer.", fileNameForExtension.c_str());
+	const std::string lexerName = props_.GetNewExpandString("lexer.", fileNameForExtension.c_str());
 	std::string start_base("comment.stream.start.");
 	std::string end_base("comment.stream.end.");
 	std::string white_space(" ");
 	start_base += lexerName;
 	end_base += lexerName;
-	std::string start_comment = props.GetString(start_base.c_str());
-	std::string end_comment = props.GetString(end_base.c_str());
+	std::string start_comment = props_.GetString(start_base.c_str());
+	std::string end_comment = props_.GetString(end_base.c_str());
 	if (start_comment == "" || end_comment == "") {
 		GUI::gui_string sStart = GUI::StringFromUTF8(start_base);
 		GUI::gui_string sEnd = GUI::StringFromUTF8(end_base);
@@ -2299,7 +2299,7 @@ int CuteTextBase::GetCurrentScrollPosition() {
 void CuteTextBase::SetTextProperties(
     PropSetFile &ps) {			///< Property set to update.
 
-	std::string ro = GUI::UTF8FromString(localiser.Text("READ"));
+	std::string ro = GUI::UTF8FromString(localiser_.Text("READ"));
 	ps.Set("ReadOnly", CurrentBuffer()->isReadOnly ? ro.c_str() : "");
 
 	const int eolMode = wEditor_.Call(SCI_GETEOLMODE);
@@ -2338,24 +2338,24 @@ void CuteTextBase::SetTextProperties(
 }
 
 void CuteTextBase::UpdateStatusBar(bool bUpdateSlowData) {
-	if (sbVisible) {
+	if (sbVisible_) {
 		if (bUpdateSlowData) {
-			SetFileProperties(propsStatus);
+			SetFileProperties(propsStatus_);
 		}
-		SetTextProperties(propsStatus);
-		propsStatus.SetInteger("LineNumber", GetCurrentLineNumber() + 1);
-		propsStatus.SetInteger("ColumnNumber", GetCurrentColumnNumber() + 1);
-		propsStatus.Set("OverType", wEditor_.Call(SCI_GETOVERTYPE) ? "OVR" : "INS");
+		SetTextProperties(propsStatus_);
+		propsStatus_.SetInteger("LineNumber", GetCurrentLineNumber() + 1);
+		propsStatus_.SetInteger("ColumnNumber", GetCurrentColumnNumber() + 1);
+		propsStatus_.Set("OverType", wEditor_.Call(SCI_GETOVERTYPE) ? "OVR" : "INS");
 
 		char sbKey[32];
-		sprintf(sbKey, "statusbar.text.%d", sbNum);
-		std::string msg = propsStatus.GetExpandedString(sbKey);
-		if (msg.size() && sbValue != msg) {	// To avoid flickering, update only if needed
+		sprintf(sbKey, "statusbar.text.%d", sbNum_);
+		std::string msg = propsStatus_.GetExpandedString(sbKey);
+		if (msg.size() && sbValue_ != msg) {	// To avoid flickering, update only if needed
 			SetStatusBarText(msg.c_str());
-			sbValue = msg;
+			sbValue_ = msg;
 		}
 	} else {
-		sbValue = "";
+		sbValue_ = "";
 	}
 }
 
@@ -2577,7 +2577,7 @@ void CuteTextBase::MaintainIndentation(char ch) {
 
 	if (((eolMode == SC_EOL_CRLF || eolMode == SC_EOL_LF) && ch == '\n') ||
 	        (eolMode == SC_EOL_CR && ch == '\r')) {
-		if (props.GetInt("indent.automatic")) {
+		if (props_.GetInt("indent.automatic")) {
 			while (lastLine >= 0 && GetLineLength(lastLine) == 0)
 				lastLine--;
 		}
@@ -2600,7 +2600,7 @@ void CuteTextBase::AutomaticIndentation(char ch) {
 	int indentBlock = IndentOfBlock(curLine - 1);
 
 	if ((wEditor_.Call(SCI_GETLEXER) == SCLEX_PYTHON) &&
-			(props.GetInt("indent.python.colon") == 1)) {
+			(props_.GetInt("indent.python.colon") == 1)) {
 		const int eolMode = wEditor_.Call(SCI_GETEOLMODE);
 		const int eolChar = (eolMode == SC_EOL_CR ? '\r' : '\n');
 		const int eolChars = (eolMode == SC_EOL_CRLF ? 2 : 1);
@@ -2669,14 +2669,14 @@ void CuteTextBase::AutomaticIndentation(char ch) {
  * such as displaying a completion list or auto-indentation.
  */
 void CuteTextBase::CharAdded(int utf32) {
-	if (recording)
+	if (recording_)
 		return;
 	const Sci_CharacterRange crange = GetSelection();
 	const int selStart = static_cast<int>(crange.cpMin);
 	const int selEnd = static_cast<int>(crange.cpMax);
 
 	if (utf32 > 0XFF) { // MBCS, never let it go.
-		if (imeAutoComplete) {
+		if (imeAutoComplete_) {
 			if ((selEnd == selStart) && (selStart > 0)) {
 				if (wEditor_.Call(SCI_CALLTIPACTIVE)) {
 					ContinueCallTip();
@@ -2695,49 +2695,49 @@ void CuteTextBase::CharAdded(int utf32) {
 	const char ch = static_cast<char>(utf32);
 	if ((selEnd == selStart) && (selStart > 0)) {
 		if (wEditor_.Call(SCI_CALLTIPACTIVE)) {
-			if (Contains(calltipParametersEnd, ch)) {
-				braceCount--;
-				if (braceCount < 1)
+			if (Contains(calltipParametersEnd_, ch)) {
+				braceCount_--;
+				if (braceCount_ < 1)
 					wEditor_.Call(SCI_CALLTIPCANCEL);
 				else
 					StartCallTip();
-			} else if (Contains(calltipParametersStart, ch)) {
-				braceCount++;
+			} else if (Contains(calltipParametersStart_, ch)) {
+				braceCount_++;
 				StartCallTip();
 			} else {
 				ContinueCallTip();
 			}
 		} else if (wEditor_.Call(SCI_AUTOCACTIVE)) {
-			if (Contains(calltipParametersStart, ch)) {
-				braceCount++;
+			if (Contains(calltipParametersStart_, ch)) {
+				braceCount_++;
 				StartCallTip();
-			} else if (Contains(calltipParametersEnd, ch)) {
-				braceCount--;
-			} else if (!Contains(wordCharacters, ch)) {
+			} else if (Contains(calltipParametersEnd_, ch)) {
+				braceCount_--;
+			} else if (!Contains(wordCharacters_, ch)) {
 				wEditor_.Call(SCI_AUTOCCANCEL);
-				if (Contains(autoCompleteStartCharacters, ch)) {
+				if (Contains(autoCompleteStartCharacters_, ch)) {
 					StartAutoComplete();
 				}
-			} else if (autoCCausedByOnlyOne) {
+			} else if (autoCCausedByOnlyOne_) {
 				StartAutoCompleteWord(true);
 			}
 		} else if (HandleXml(ch)) {
 			// Handled in the routine
 		} else {
-			if (Contains(calltipParametersStart, ch)) {
-				braceCount = 1;
+			if (Contains(calltipParametersStart_, ch)) {
+				braceCount_ = 1;
 				StartCallTip();
 			} else {
-				autoCCausedByOnlyOne = false;
+				autoCCausedByOnlyOne_ = false;
 				if (indentMaintain_)
 					MaintainIndentation(ch);
-				else if (props.GetInt("indent.automatic"))
+				else if (props_.GetInt("indent.automatic"))
 					AutomaticIndentation(ch);
-				if (Contains(autoCompleteStartCharacters, ch)) {
+				if (Contains(autoCompleteStartCharacters_, ch)) {
 					StartAutoComplete();
-				} else if (props.GetInt("autocompleteword.automatic") && Contains(wordCharacters, ch)) {
+				} else if (props_.GetInt("autocompleteword.automatic") && Contains(wordCharacters_, ch)) {
 					StartAutoCompleteWord(true);
-					autoCCausedByOnlyOne = wEditor_.Call(SCI_AUTOCACTIVE);
+					autoCCausedByOnlyOne_ = wEditor_.Call(SCI_AUTOCACTIVE);
 				}
 			}
 		}
@@ -2758,11 +2758,11 @@ void CuteTextBase::CharAddedOutput(int ch) {
 			std::string symbols;
 			const char *key = NULL;
 			const char *val = NULL;
-			bool b = props.GetFirst(key, val);
+			bool b = props_.GetFirst(key, val);
 			while (b) {
 				symbols.append(key);
 				symbols.append(") ");
-				b = props.GetNext(key, val);
+				b = props_.GetNext(key, val);
 			}
 			StringList symList;
 			symList.Set(symbols.c_str());
@@ -2794,7 +2794,7 @@ bool CuteTextBase::HandleXml(char ch) {
 
 	// If the user has turned us off, quit now.
 	// Default is off
-	const std::string value = props.GetExpandedString("xml.auto.close.tags");
+	const std::string value = props_.GetExpandedString("xml.auto.close.tags");
 	if ((value.length() == 0) || (value == "0")) {
 		return false;
 	}
@@ -2877,7 +2877,7 @@ std::string CuteTextBase::FindOpenXmlTag(const char sel[], int nSize) {
 void CuteTextBase::GoMatchingBrace(bool select) {
 	int braceAtCaret = -1;
 	int braceOpposite = -1;
-	const bool isInside = FindMatchingBracePosition(pwFocussed == &wEditor_, braceAtCaret, braceOpposite, true);
+	const bool isInside = FindMatchingBracePosition(pwFocussed_ == &wEditor_, braceAtCaret, braceOpposite, true);
 	// Convert the character positions into caret positions based on whether
 	// the caret position was inside or outside the braces.
 	if (isInside) {
@@ -2894,11 +2894,11 @@ void CuteTextBase::GoMatchingBrace(bool select) {
 		}
 	}
 	if (braceOpposite >= 0) {
-		EnsureRangeVisible(*pwFocussed, braceOpposite, braceOpposite);
+		EnsureRangeVisible(*pwFocussed_, braceOpposite, braceOpposite);
 		if (select) {
-			pwFocussed->Call(SCI_SETSEL, braceAtCaret, braceOpposite);
+			pwFocussed_->Call(SCI_SETSEL, braceAtCaret, braceOpposite);
 		} else {
-			pwFocussed->Call(SCI_SETSEL, braceOpposite, braceOpposite);
+			pwFocussed_->Call(SCI_SETSEL, braceOpposite, braceOpposite);
 		}
 	}
 }
@@ -2947,7 +2947,7 @@ void CuteTextBase::AddCommand(const std::string &cmd, const std::string &dir, Jo
 	} else {
 		directoryRun = filePath_.Directory();
 	}
-	jobQueue.AddCommand(cmd, directoryRun, jobType, input, flags);
+	jobQueue_.AddCommand(cmd, directoryRun, jobType, input, flags);
 }
 
 int ControlIDOfCommand(unsigned long wParam) {
@@ -2959,10 +2959,10 @@ void WindowSetFocus(GUI::ScintillaWindow &w) {
 }
 
 void CuteTextBase::SetLineNumberWidth() {
-	if (lineNumbers) {
-		int lineNumWidth = lineNumbersWidth;
+	if (lineNumbers_) {
+		int lineNumWidth = lineNumbersWidth_;
 
-		if (lineNumbersExpand) {
+		if (lineNumbersExpand_) {
 			// The margin size will be expanded if the current buffer's maximum
 			// line number would overflow the margin.
 
@@ -2974,8 +2974,8 @@ void CuteTextBase::SetLineNumberWidth() {
 				++lineNumWidth;
 			}
 
-			if (lineNumWidth < lineNumbersWidth) {
-				lineNumWidth = lineNumbersWidth;
+			if (lineNumWidth < lineNumbersWidth_) {
+				lineNumWidth = lineNumbersWidth_;
 			}
 		}
 		if (lineNumWidth < 0)
@@ -3009,7 +3009,7 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 		// when doing the opening. Must be done there as user
 		// may decide to open multiple files so do not know yet
 		// how much room needed.
-		OpenDialog(filePath_.Directory(), GUI::StringFromUTF8(props.GetExpandedString("open.filter")).c_str());
+		OpenDialog(filePath_.Directory(), GUI::StringFromUTF8(props_.GetExpandedString("open.filter")).c_str());
 		WindowSetFocus(wEditor_);
 		break;
 	case IDM_OPENSELECTED:
@@ -3097,13 +3097,13 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 			// Override the code page if Unicode
 			codePage_ = SC_CP_UTF8;
 		} else {
-			codePage_ = props.GetInt("code.page");
+			codePage_ = props_.GetInt("code.page");
 		}
 		wEditor_.Call(SCI_SETCODEPAGE, codePage_);
 		break;
 
 	case IDM_NEXTFILESTACK:
-		if (buffers.size() > 1 && props.GetInt("buffers.zorder.switching")) {
+		if (buffers_.size() > 1 && props_.GetInt("buffers.zorder.switching")) {
 			NextInStack(); // next most recently selected buffer
 			WindowSetFocus(wEditor_);
 			break;
@@ -3111,7 +3111,7 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 		/* FALLTHRU */
 		// else fall through and do NEXTFILE behaviour...
 	case IDM_NEXTFILE:
-		if (buffers.size() > 1) {
+		if (buffers_.size() > 1) {
 			Next(); // Use Next to tabs move left-to-right
 			WindowSetFocus(wEditor_);
 		} else {
@@ -3121,7 +3121,7 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 		break;
 
 	case IDM_PREVFILESTACK:
-		if (buffers.size() > 1 && props.GetInt("buffers.zorder.switching")) {
+		if (buffers_.size() > 1 && props_.GetInt("buffers.zorder.switching")) {
 			PrevInStack(); // next least recently selected buffer
 			WindowSetFocus(wEditor_);
 			break;
@@ -3129,7 +3129,7 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 		/* FALLTHRU */
 		// else fall through and do PREVFILE behaviour...
 	case IDM_PREVFILE:
-		if (buffers.size() > 1) {
+		if (buffers_.size() > 1) {
 			Prev(); // Use Prev to tabs move right-to-left
 			WindowSetFocus(wEditor_);
 		} else {
@@ -3268,19 +3268,19 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 		break;
 	case IDM_SHOWCALLTIP:
 		if (wEditor_.Call(SCI_CALLTIPACTIVE)) {
-			currentCallTip = (currentCallTip + 1 == maxCallTips) ? 0 : currentCallTip + 1;
+			currentCallTip_ = (currentCallTip_ + 1 == maxCallTips_) ? 0 : currentCallTip_ + 1;
 			FillFunctionDefinition();
 		} else {
 			StartCallTip();
 		}
 		break;
 	case IDM_COMPLETE:
-		autoCCausedByOnlyOne = false;
+		autoCCausedByOnlyOne_ = false;
 		StartAutoComplete();
 		break;
 
 	case IDM_COMPLETEWORD:
-		autoCCausedByOnlyOne = false;
+		autoCCausedByOnlyOne_ = false;
 		StartAutoCompleteWord(false);
 		break;
 
@@ -3353,37 +3353,37 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 	case IDM_SPLITVERTICAL:
 		{
 			const GUI::Rectangle rcClient = GetClientRectangle();
-			const double doubleHeightOutput = heightOutput;
-			const double doublePreviousHeightOutput = previousHeightOutput;
-			heightOutput = static_cast<int>(splitVertical ?
+			const double doubleHeightOutput = heightOutput_;
+			const double doublePreviousHeightOutput = previousHeightOutput_;
+			heightOutput_ = static_cast<int>(splitVertical_ ?
 				lround(doubleHeightOutput * rcClient.Height() / rcClient.Width()) :
 				lround(doubleHeightOutput * rcClient.Width() / rcClient.Height()));
-			previousHeightOutput = static_cast<int>(splitVertical ?
+			previousHeightOutput_ = static_cast<int>(splitVertical_ ?
 				lround(doublePreviousHeightOutput * rcClient.Height() / rcClient.Width()) :
 				lround(doublePreviousHeightOutput * rcClient.Width() / rcClient.Height()));
 		}
-		splitVertical = !splitVertical;
-		heightOutput = NormaliseSplit(heightOutput);
+		splitVertical_ = !splitVertical_;
+		heightOutput_ = NormaliseSplit(heightOutput_);
 		SizeSubWindows();
 		CheckMenus();
 		Redraw();
 		break;
 
 	case IDM_LINENUMBERMARGIN:
-		lineNumbers = !lineNumbers;
+		lineNumbers_ = !lineNumbers_;
 		SetLineNumberWidth();
 		CheckMenus();
 		break;
 
 	case IDM_SELMARGIN:
-		margin = !margin;
-		wEditor_.Call(SCI_SETMARGINWIDTHN, 1, margin ? marginWidth : 0);
+		margin_ = !margin_;
+		wEditor_.Call(SCI_SETMARGINWIDTHN, 1, margin_ ? marginWidth_ : 0);
 		CheckMenus();
 		break;
 
 	case IDM_FOLDMARGIN:
-		foldMargin = !foldMargin;
-		wEditor_.Call(SCI_SETMARGINWIDTHN, 2, foldMargin ? foldMarginWidth : 0);
+		foldMargin_ = !foldMargin_;
+		wEditor_.Call(SCI_SETMARGINWIDTHN, 2, foldMargin_ ? foldMarginWidth_ : 0);
 		CheckMenus();
 		break;
 
@@ -3393,7 +3393,7 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 		break;
 
 	case IDM_VIEWTOOLBAR:
-		tbVisible = !tbVisible;
+		tbVisible_ = !tbVisible_;
 		ShowToolBar();
 		CheckMenus();
 		break;
@@ -3409,14 +3409,14 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 		break;
 
 	case IDM_WRAP:
-		wrap = !wrap;
-		wEditor_.Call(SCI_SETWRAPMODE, wrap ? wrapStyle : SC_WRAP_NONE);
+		wrap_ = !wrap_;
+		wEditor_.Call(SCI_SETWRAPMODE, wrap_ ? wrapStyle_ : SC_WRAP_NONE);
 		CheckMenus();
 		break;
 
 	case IDM_WRAPOUTPUT:
-		wrapOutput = !wrapOutput;
-		wOutput_.Call(SCI_SETWRAPMODE, wrapOutput ? wrapStyle : SC_WRAP_NONE);
+		wrapOutput_ = !wrapOutput_;
+		wOutput_.Call(SCI_SETWRAPMODE, wrapOutput_ ? wrapStyle_ : SC_WRAP_NONE);
 		CheckMenus();
 		break;
 
@@ -3429,13 +3429,13 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 		break;
 
 	case IDM_VIEWTABBAR:
-		tabVisible = !tabVisible;
+		tabVisible_ = !tabVisible_;
 		ShowTabBar();
 		CheckMenus();
 		break;
 
 	case IDM_VIEWSTATUSBAR:
-		sbVisible = !sbVisible;
+		sbVisible_ = !sbVisible_;
 		ShowStatusBar();
 		UpdateStatusBar(true);
 		CheckMenus();
@@ -3446,7 +3446,7 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 		break;
 
 	case IDM_SWITCHPANE:
-		if (pwFocussed == &wEditor_)
+		if (pwFocussed_ == &wEditor_)
 			WindowSetFocus(wOutput_);
 		else
 			WindowSetFocus(wEditor_);
@@ -3480,7 +3480,7 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 
 	case IDM_VIEWGUIDES: {
 			const bool viewIG = wEditor_.Call(SCI_GETINDENTATIONGUIDES, 0, 0) == 0;
-			wEditor_.Call(SCI_SETINDENTATIONGUIDES, viewIG ? indentExamine : SC_IV_NONE);
+			wEditor_.Call(SCI_SETINDENTATIONGUIDES, viewIG ? indentExamine_ : SC_IV_NONE);
 			CheckMenus();
 			Redraw();
 		}
@@ -3489,9 +3489,9 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 	case IDM_COMPILE: {
 			if (SaveIfUnsureForBuilt() != kSaveCancelled) {
 				SelectionIntoProperties();
-				AddCommand(props.GetWild("command.compile.", FileNameExt().AsUTF8().c_str()), "",
+				AddCommand(props_.GetWild("command.compile.", FileNameExt().AsUTF8().c_str()), "",
 				        SubsystemType("command.compile.subsystem."));
-				if (jobQueue.HasCommandToRun())
+				if (jobQueue_.HasCommandToRun())
 					Execute();
 			}
 		}
@@ -3501,11 +3501,11 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 			if (SaveIfUnsureForBuilt() != kSaveCancelled) {
 				SelectionIntoProperties();
 				AddCommand(
-				    props.GetWild("command.build.", FileNameExt().AsUTF8().c_str()),
-				    props.GetNewExpandString("command.build.directory.", FileNameExt().AsUTF8().c_str()),
+				    props_.GetWild("command.build.", FileNameExt().AsUTF8().c_str()),
+				    props_.GetNewExpandString("command.build.directory.", FileNameExt().AsUTF8().c_str()),
 				    SubsystemType("command.build.subsystem."));
-				if (jobQueue.HasCommandToRun()) {
-					jobQueue.isBuilding = true;
+				if (jobQueue_.HasCommandToRun()) {
+					jobQueue_.isBuilding = true;
 					Execute();
 				}
 			}
@@ -3515,9 +3515,9 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 	case IDM_CLEAN: {
 			if (SaveIfUnsureForBuilt() != kSaveCancelled) {
 				SelectionIntoProperties();
-				AddCommand(props.GetWild("command.clean.", FileNameExt().AsUTF8().c_str()), "",
+				AddCommand(props_.GetWild("command.clean.", FileNameExt().AsUTF8().c_str()), "",
 				        SubsystemType("command.clean.subsystem."));
-				if (jobQueue.HasCommandToRun())
+				if (jobQueue_.HasCommandToRun())
 					Execute();
 			}
 		}
@@ -3528,18 +3528,18 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 				SelectionIntoProperties();
 				int flags = 0;
 
-				if (!jobQueue.isBuilt) {
-					std::string buildcmd = props.GetNewExpandString("command.go.needs.", FileNameExt().AsUTF8().c_str());
+				if (!jobQueue_.isBuilt) {
+					std::string buildcmd = props_.GetNewExpandString("command.go.needs.", FileNameExt().AsUTF8().c_str());
 					AddCommand(buildcmd, "",
 					        SubsystemType("command.go.needs.subsystem."));
 					if (buildcmd.length() > 0) {
-						jobQueue.isBuilding = true;
+						jobQueue_.isBuilding = true;
 						flags |= jobForceQueue;
 					}
 				}
-				AddCommand(props.GetWild("command.go.", FileNameExt().AsUTF8().c_str()), "",
+				AddCommand(props_.GetWild("command.go.", FileNameExt().AsUTF8().c_str()), "",
 				        SubsystemType("command.go.subsystem."), "", flags);
-				if (jobQueue.HasCommandToRun())
+				if (jobQueue_.HasCommandToRun())
 					Execute();
 			}
 		}
@@ -3644,10 +3644,10 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 
 	case IDM_HELP: {
 			SelectionIntoProperties();
-			AddCommand(props.GetWild("command.help.", FileNameExt().AsUTF8().c_str()), "",
+			AddCommand(props_.GetWild("command.help.", FileNameExt().AsUTF8().c_str()), "",
 			        SubsystemType("command.help.subsystem."));
-			if (!jobQueue.IsExecuting() && jobQueue.HasCommandToRun()) {
-				jobQueue.isBuilding = true;
+			if (!jobQueue_.IsExecuting() && jobQueue_.HasCommandToRun()) {
+				jobQueue_.isBuilding = true;
 				Execute();
 			}
 		}
@@ -3655,10 +3655,10 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 
 	case IDM_HELP_SCITE: {
 			SelectionIntoProperties();
-			AddCommand(props.GetString("command.scite.help"), "",
-			        SubsystemFromChar(props.GetString("command.scite.help.subsystem")[0]));
-			if (!jobQueue.IsExecuting() && jobQueue.HasCommandToRun()) {
-				jobQueue.isBuilding = true;
+			AddCommand(props_.GetString("command.scite.help"), "",
+			        SubsystemFromChar(props_.GetString("command.scite.help.subsystem")[0]));
+			if (!jobQueue_.IsExecuting() && jobQueue_.HasCommandToRun()) {
+				jobQueue_.isBuilding = true;
 				Execute();
 			}
 		}
@@ -3666,7 +3666,7 @@ void CuteTextBase::MenuCommand(int cmdID, int source) {
 
 	default:
 		if ((cmdID >= kBufferCmdID) &&
-		        (cmdID < kBufferCmdID + buffers.size())) {
+		        (cmdID < kBufferCmdID + buffers_.size())) {
 			SetDocumentAt(cmdID - kBufferCmdID);
 			CheckReload();
 		} else if ((cmdID >= kFileStackCmdID) &&
@@ -3841,7 +3841,7 @@ void CuteTextBase::EnsureAllChildrenVisible(int line, int level) {
 }
 
 void CuteTextBase::NewLineInOutput() {
-	if (jobQueue.IsExecuting())
+	if (jobQueue_.IsExecuting())
 		return;
 	int line = wOutput_.Call(SCI_LINEFROMPOSITION,
 	        wOutput_.Call(SCI_GETCURRENTPOS)) - 1;
@@ -3860,7 +3860,7 @@ void CuteTextBase::NewLineInOutput() {
 	} else if (StartsWith(cmd, ">")) {
 		cmd = cmd.substr(1);
 	}
-	returnOutputToCommand = false;
+	returnOutputToCommand_ = false;
 	AddCommand(cmd.c_str(), "", jobCLI);
 	Execute();
 }
@@ -3869,7 +3869,7 @@ void CuteTextBase::Notify(SCNotification *notification) {
 	bool handled = false;
 	switch (notification->nmhdr.code) {
 	case SCN_PAINTED:
-		if ((notification->nmhdr.idFrom == IDM_SRCWIN) == (pwFocussed == &wEditor_)) {
+		if ((notification->nmhdr.idFrom == IDM_SRCWIN) == (pwFocussed_ == &wEditor_)) {
 			// Obly highlight focussed pane.
 			// Manage delay before highlight when no user selection but there is word at the caret.
 			// So the Delay is based on the blinking of caret, scroll...
@@ -3879,7 +3879,7 @@ void CuteTextBase::Notify(SCNotification *notification) {
 				if (currentWordHighlight.elapsedTimes.Duration() >= 0.5) {
 					currentWordHighlight.statesOfDelay = currentWordHighlight.kDelayJustEnded;
 					HighlightCurrentWord(true);
-					pwFocussed->InvalidateAll();
+					pwFocussed_->InvalidateAll();
 				}
 			}
 		}
@@ -3895,7 +3895,7 @@ void CuteTextBase::Notify(SCNotification *notification) {
 		break;
 
 	case SCN_STYLENEEDED: {
-			if (extender) {
+			if (extender_) {
 				// Colourisation may be performed by script
 				if ((notification->nmhdr.idFrom == IDM_SRCWIN) && (lexLanguage_ == SCLEX_CONTAINER)) {
 					int endStyled = wEditor_.Call(SCI_GETENDSTYLED);
@@ -3906,7 +3906,7 @@ void CuteTextBase::Notify(SCNotification *notification) {
 					if (endStyled > 0)
 						styleStart = styler.StyleAt(endStyled - 1);
 					styler.SetCodePage(codePage_);
-					extender->OnStyle(endStyled, static_cast<int>(notification->position - endStyled),
+					extender_->OnStyle(endStyled, static_cast<int>(notification->position - endStyled),
 					        styleStart, &styler);
 					styler.Flush();
 				}
@@ -3915,8 +3915,8 @@ void CuteTextBase::Notify(SCNotification *notification) {
 		break;
 
 	case SCN_CHARADDED:
-		if (extender)
-			handled = extender->OnChar(static_cast<char>(notification->ch));
+		if (extender_)
+			handled = extender_->OnChar(static_cast<char>(notification->ch));
 		if (!handled) {
 			if (notification->nmhdr.idFrom == IDM_SRCWIN) {
 				CharAdded(notification->ch);
@@ -3928,8 +3928,8 @@ void CuteTextBase::Notify(SCNotification *notification) {
 
 	case SCN_SAVEPOINTREACHED:
 		if (notification->nmhdr.idFrom == IDM_SRCWIN) {
-			if (extender)
-				handled = extender->OnSavePointReached();
+			if (extender_)
+				handled = extender_->OnSavePointReached();
 			if (!handled) {
 				CurrentBuffer()->isDirty = false;
 			}
@@ -3941,11 +3941,11 @@ void CuteTextBase::Notify(SCNotification *notification) {
 
 	case SCN_SAVEPOINTLEFT:
 		if (notification->nmhdr.idFrom == IDM_SRCWIN) {
-			if (extender)
-				handled = extender->OnSavePointLeft();
+			if (extender_)
+				handled = extender_->OnSavePointLeft();
 			if (!handled) {
 				CurrentBuffer()->isDirty = true;
-				jobQueue.isBuilt = false;
+				jobQueue_.isBuilt = false;
 			}
 		}
 		CheckMenus();
@@ -3954,16 +3954,16 @@ void CuteTextBase::Notify(SCNotification *notification) {
 		break;
 
 	case SCN_DOUBLECLICK:
-		if (extender)
-			handled = extender->OnDoubleClick();
+		if (extender_)
+			handled = extender_->OnDoubleClick();
 		if (!handled && notification->nmhdr.idFrom == IDM_RUNWIN) {
 			GoMessage(0);
 		}
 		break;
 
 	case SCN_UPDATEUI:
-		if (extender)
-			handled = extender->OnUpdateUI();
+		if (extender_)
+			handled = extender_->OnUpdateUI();
 		if (!handled) {
 			BraceMatch(notification->nmhdr.idFrom == IDM_SRCWIN);
 			if (notification->nmhdr.idFrom == IDM_SRCWIN) {
@@ -3975,7 +3975,7 @@ void CuteTextBase::Notify(SCNotification *notification) {
 			RemoveFindMarks();
 		}
 		if (notification->updated & (SC_UPDATE_SELECTION | SC_UPDATE_CONTENT)) {
-			if ((notification->nmhdr.idFrom == IDM_SRCWIN) == (pwFocussed == &wEditor_)) {
+			if ((notification->nmhdr.idFrom == IDM_SRCWIN) == (pwFocussed_ == &wEditor_)) {
 				// Obly highlight focussed pane.
 				if (notification->updated & SC_UPDATE_SELECTION) {
 					currentWordHighlight.statesOfDelay = currentWordHighlight.kNoDelay; // Selection has just been updated, so delay is disabled.
@@ -4001,7 +4001,7 @@ void CuteTextBase::Notify(SCNotification *notification) {
 			EnableAMenuItem(IDM_UNDO, CallFocusedElseDefault(true, SCI_CANUNDO));
 			EnableAMenuItem(IDM_REDO, CallFocusedElseDefault(true, SCI_CANREDO));
 		} else if (notification->modificationType & (SC_MOD_INSERTTEXT | SC_MOD_DELETETEXT)) {
-			if ((notification->nmhdr.idFrom == IDM_SRCWIN) == (pwFocussed == &wEditor_)) {
+			if ((notification->nmhdr.idFrom == IDM_SRCWIN) == (pwFocussed_ == &wEditor_)) {
 				currentWordHighlight.textHasChanged = true;
 			}
 			//this will be called a lot, and usually means "typing".
@@ -4012,7 +4012,7 @@ void CuteTextBase::Notify(SCNotification *notification) {
 			}
 		}
 
-		if (notification->linesAdded && lineNumbers && lineNumbersExpand)
+		if (notification->linesAdded && lineNumbers_ && lineNumbersExpand_)
 			SetLineNumberWidth();
 
 		if (0 != (notification->modificationType & SC_MOD_CHANGEFOLD)) {
@@ -4022,8 +4022,8 @@ void CuteTextBase::Notify(SCNotification *notification) {
 		break;
 
 	case SCN_MARGINCLICK: {
-			if (extender)
-				handled = extender->OnMarginClick();
+			if (extender_)
+				handled = extender_->OnMarginClick();
 			if (!handled) {
 				if (notification->margin == 2) {
 					MarginClick(static_cast<int>(notification->position), notification->modifiers);
@@ -4040,17 +4040,17 @@ void CuteTextBase::Notify(SCNotification *notification) {
 	case SCN_USERLISTSELECTION: {
 			if (notification->wParam == 2)
 				ContinueMacroList(notification->text);
-			else if (extender && notification->wParam > 2)
-				extender->OnUserListSelection(static_cast<int>(notification->wParam), notification->text);
+			else if (extender_ && notification->wParam > 2)
+				extender_->OnUserListSelection(static_cast<int>(notification->wParam), notification->text);
 		}
 		break;
 
 	case SCN_CALLTIPCLICK: {
-			if (notification->position == 1 && currentCallTip > 0) {
-				currentCallTip--;
+			if (notification->position == 1 && currentCallTip_ > 0) {
+				currentCallTip_--;
 				FillFunctionDefinition();
-			} else if (notification->position == 2 && currentCallTip + 1 < maxCallTips) {
-				currentCallTip++;
+			} else if (notification->position == 2 && currentCallTip_ + 1 < maxCallTips_) {
+				currentCallTip_++;
 				FillFunctionDefinition();
 			}
 		}
@@ -4065,21 +4065,21 @@ void CuteTextBase::Notify(SCNotification *notification) {
 		break;
 
 	case SCN_DWELLSTART:
-		if (extender && (INVALID_POSITION != notification->position)) {
+		if (extender_ && (INVALID_POSITION != notification->position)) {
 			int endWord = static_cast<int>(notification->position);
 			int position = static_cast<int>(notification->position);
 			std::string message =
 				RangeExtendAndGrab(wEditor_,
 					position, endWord, &CuteTextBase::iswordcharforsel);
 			if (message.length()) {
-				extender->OnDwellStart(position, message.c_str());
+				extender_->OnDwellStart(position, message.c_str());
 			}
 		}
 		break;
 
 	case SCN_DWELLEND:
-		if (extender) {
-			extender->OnDwellStart(0,""); // flags end of calltip
+		if (extender_) {
+			extender_->OnDwellStart(0,""); // flags end of calltip
 		}
 		break;
 
@@ -4109,52 +4109,52 @@ void CuteTextBase::CheckMenus() {
 	EnableAMenuItem(IDM_DUPLICATE, CurrentBuffer()->isReadOnly);
 	EnableAMenuItem(IDM_SHOWCALLTIP, apis_ != 0);
 	EnableAMenuItem(IDM_COMPLETE, apis_ != 0);
-	CheckAMenuItem(IDM_SPLITVERTICAL, splitVertical);
-	EnableAMenuItem(IDM_OPENFILESHERE, props.GetInt("check.if.already.open") != 0);
-	CheckAMenuItem(IDM_OPENFILESHERE, openFilesHere);
-	CheckAMenuItem(IDM_WRAP, wrap);
-	CheckAMenuItem(IDM_WRAPOUTPUT, wrapOutput);
+	CheckAMenuItem(IDM_SPLITVERTICAL, splitVertical_);
+	EnableAMenuItem(IDM_OPENFILESHERE, props_.GetInt("check.if.already.open") != 0);
+	CheckAMenuItem(IDM_OPENFILESHERE, openFilesHere_);
+	CheckAMenuItem(IDM_WRAP, wrap_);
+	CheckAMenuItem(IDM_WRAPOUTPUT, wrapOutput_);
 	CheckAMenuItem(IDM_READONLY, CurrentBuffer()->isReadOnly);
-	CheckAMenuItem(IDM_FULLSCREEN, fullScreen);
-	CheckAMenuItem(IDM_VIEWTOOLBAR, tbVisible);
-	CheckAMenuItem(IDM_VIEWTABBAR, tabVisible);
-	CheckAMenuItem(IDM_VIEWSTATUSBAR, sbVisible);
+	CheckAMenuItem(IDM_FULLSCREEN, fullScreen_);
+	CheckAMenuItem(IDM_VIEWTOOLBAR, tbVisible_);
+	CheckAMenuItem(IDM_VIEWTABBAR, tabVisible_);
+	CheckAMenuItem(IDM_VIEWSTATUSBAR, sbVisible_);
 	CheckAMenuItem(IDM_VIEWEOL, wEditor_.Call(SCI_GETVIEWEOL));
 	CheckAMenuItem(IDM_VIEWSPACE, wEditor_.Call(SCI_GETVIEWWS));
 	CheckAMenuItem(IDM_VIEWGUIDES, wEditor_.Call(SCI_GETINDENTATIONGUIDES));
-	CheckAMenuItem(IDM_LINENUMBERMARGIN, lineNumbers);
-	CheckAMenuItem(IDM_SELMARGIN, margin);
-	CheckAMenuItem(IDM_FOLDMARGIN, foldMargin);
-	CheckAMenuItem(IDM_TOGGLEOUTPUT, heightOutput > 0);
+	CheckAMenuItem(IDM_LINENUMBERMARGIN, lineNumbers_);
+	CheckAMenuItem(IDM_SELMARGIN, margin_);
+	CheckAMenuItem(IDM_FOLDMARGIN, foldMargin_);
+	CheckAMenuItem(IDM_TOGGLEOUTPUT, heightOutput_ > 0);
 	CheckAMenuItem(IDM_TOGGLEPARAMETERS, ParametersOpen());
 	CheckAMenuItem(IDM_MONOFONT, CurrentBuffer()->useMonoFont);
-	EnableAMenuItem(IDM_COMPILE, !jobQueue.IsExecuting() &&
-	        props.GetWild("command.compile.", FileNameExt().AsUTF8().c_str()).size() != 0);
-	EnableAMenuItem(IDM_BUILD, !jobQueue.IsExecuting() &&
-	        props.GetWild("command.build.", FileNameExt().AsUTF8().c_str()).size() != 0);
-	EnableAMenuItem(IDM_CLEAN, !jobQueue.IsExecuting() &&
-	        props.GetWild("command.clean.", FileNameExt().AsUTF8().c_str()).size() != 0);
-	EnableAMenuItem(IDM_GO, !jobQueue.IsExecuting() &&
-	        props.GetWild("command.go.", FileNameExt().AsUTF8().c_str()).size() != 0);
-	EnableAMenuItem(IDM_OPENDIRECTORYPROPERTIES, props.GetInt("properties.directory.enable") != 0);
+	EnableAMenuItem(IDM_COMPILE, !jobQueue_.IsExecuting() &&
+	        props_.GetWild("command.compile.", FileNameExt().AsUTF8().c_str()).size() != 0);
+	EnableAMenuItem(IDM_BUILD, !jobQueue_.IsExecuting() &&
+	        props_.GetWild("command.build.", FileNameExt().AsUTF8().c_str()).size() != 0);
+	EnableAMenuItem(IDM_CLEAN, !jobQueue_.IsExecuting() &&
+	        props_.GetWild("command.clean.", FileNameExt().AsUTF8().c_str()).size() != 0);
+	EnableAMenuItem(IDM_GO, !jobQueue_.IsExecuting() &&
+	        props_.GetWild("command.go.", FileNameExt().AsUTF8().c_str()).size() != 0);
+	EnableAMenuItem(IDM_OPENDIRECTORYPROPERTIES, props_.GetInt("properties.directory.enable") != 0);
 	for (int toolItem = 0; toolItem < kToolMax; toolItem++)
-		EnableAMenuItem(IDM_TOOLS + toolItem, ToolIsImmediate(toolItem) || !jobQueue.IsExecuting());
-	EnableAMenuItem(IDM_STOPEXECUTE, jobQueue.IsExecuting());
-	if (buffers.size() > 0) {
-		TabSelect(buffers.Current());
-		for (int bufferItem = 0; bufferItem < buffers.lengthVisible; bufferItem++) {
-			CheckAMenuItem(IDM_BUFFER + bufferItem, bufferItem == buffers.Current());
+		EnableAMenuItem(IDM_TOOLS + toolItem, ToolIsImmediate(toolItem) || !jobQueue_.IsExecuting());
+	EnableAMenuItem(IDM_STOPEXECUTE, jobQueue_.IsExecuting());
+	if (buffers_.size() > 0) {
+		TabSelect(buffers_.Current());
+		for (int bufferItem = 0; bufferItem < buffers_.lengthVisible; bufferItem++) {
+			CheckAMenuItem(IDM_BUFFER + bufferItem, bufferItem == buffers_.Current());
 		}
 	}
-	EnableAMenuItem(IDM_MACROPLAY, !recording);
-	EnableAMenuItem(IDM_MACRORECORD, !recording);
-	EnableAMenuItem(IDM_MACROSTOPRECORD, recording);
+	EnableAMenuItem(IDM_MACROPLAY, !recording_);
+	EnableAMenuItem(IDM_MACRORECORD, !recording_);
+	EnableAMenuItem(IDM_MACROSTOPRECORD, recording_);
 }
 
 void CuteTextBase::ContextMenu(GUI::ScintillaWindow &wSource, GUI::Point pt, GUI::Window wCmd) {
 	const int currentPos = wSource.Call(SCI_GETCURRENTPOS);
 	const int anchor = wSource.Call(SCI_GETANCHOR);
-	popup.CreatePopUp();
+	popup_.CreatePopUp();
 	const bool writable = !wSource.Call(SCI_GETREADONLY);
 	AddToPopUp("Undo", IDM_UNDO, writable && wSource.Call(SCI_CANUNDO));
 	AddToPopUp("Redo", IDM_REDO, writable && wSource.Call(SCI_CANREDO));
@@ -4171,7 +4171,7 @@ void CuteTextBase::ContextMenu(GUI::ScintillaWindow &wSource, GUI::Point pt, GUI
 	} else {
 		AddToPopUp("Close", IDM_CLOSE, true);
 	}
-	std::string userContextMenu = props.GetNewExpandString("user.context.menu");
+	std::string userContextMenu = props_.GetNewExpandString("user.context.menu");
 	std::replace(userContextMenu.begin(), userContextMenu.end(), '|', '\0');
 	const char *userContextItem = userContextMenu.c_str();
 	const char *endDefinition = userContextItem + userContextMenu.length();
@@ -4184,7 +4184,7 @@ void CuteTextBase::ContextMenu(GUI::ScintillaWindow &wSource, GUI::Point pt, GUI
 			AddToPopUp(caption, cmd);
 		}
 	}
-	popup.Show(pt, wCmd);
+	popup_.Show(pt, wCmd);
 }
 
 /**
@@ -4196,28 +4196,28 @@ int CuteTextBase::NormaliseSplit(int splitPos) {
 	const int h = rcClient.Height();
 	if (splitPos < 20)
 		splitPos = 0;
-	if (splitVertical) {
-		if (splitPos > w - heightBar - 20)
-			splitPos = w - heightBar;
+	if (splitVertical_) {
+		if (splitPos > w - heightBar_ - 20)
+			splitPos = w - heightBar_;
 	} else {
-		if (splitPos > h - heightBar - 20)
-			splitPos = h - heightBar;
+		if (splitPos > h - heightBar_ - 20)
+			splitPos = h - heightBar_;
 	}
 	return splitPos;
 }
 
 void CuteTextBase::MoveSplit(GUI::Point ptNewDrag) {
-	int newHeightOutput = heightOutputStartDrag + (ptStartDrag.y - ptNewDrag.y);
-	if (splitVertical)
-		newHeightOutput = heightOutputStartDrag + (ptStartDrag.x - ptNewDrag.x);
+	int newHeightOutput = heightOutputStartDrag_ + (ptStartDrag_.y_ - ptNewDrag.y_);
+	if (splitVertical_)
+		newHeightOutput = heightOutputStartDrag_ + (ptStartDrag_.x_ - ptNewDrag.x_);
 	newHeightOutput = NormaliseSplit(newHeightOutput);
-	if (heightOutput != newHeightOutput) {
-		heightOutput = newHeightOutput;
+	if (heightOutput_ != newHeightOutput) {
+		heightOutput_ = newHeightOutput;
 		SizeContentWindows();
 		//Redraw();
 	}
 
-	previousHeightOutput = newHeightOutput;
+	previousHeightOutput_ = newHeightOutput;
 }
 
 void CuteTextBase::TimerStart(int /* mask */) {
@@ -4227,15 +4227,15 @@ void CuteTextBase::TimerEnd(int /* mask */) {
 }
 
 void CuteTextBase::OnTimer() {
-	if (delayBeforeAutoSave && (0 == dialogsOnScreen)) {
+	if (delayBeforeAutoSave_ && (0 == dialogsOnScreen_)) {
 		// First save the visible buffer to avoid any switching if not needed
-		if (CurrentBuffer()->NeedsSave(delayBeforeAutoSave)) {
+		if (CurrentBuffer()->NeedsSave(delayBeforeAutoSave_)) {
 			Save(kSfNone);
 		}
 		// Then look through the other buffers to save any that need to be saved
-		const int currentBuffer = buffers.Current();
-		for (int i = 0; i < buffers.length; i++) {
-			if (buffers.buffers[i].NeedsSave(delayBeforeAutoSave)) {
+		const int currentBuffer = buffers_.Current();
+		for (int i = 0; i < buffers_.length; i++) {
+			if (buffers_.buffers_[i].NeedsSave(delayBeforeAutoSave_)) {
 				SetDocumentAt(i);
 				Save(kSfNone);
 			}
@@ -4262,16 +4262,16 @@ void CuteTextBase::OnIdle() {
 
 void CuteTextBase::SetHomeProperties() {
 	FilePath homepath = GetSciteDefaultHome();
-	props.Set("SciteDefaultHome", homepath.AsUTF8().c_str());
+	props_.Set("SciteDefaultHome", homepath.AsUTF8().c_str());
 	homepath = GetSciteUserHome();
-	props.Set("SciteUserHome", homepath.AsUTF8().c_str());
+	props_.Set("SciteUserHome", homepath.AsUTF8().c_str());
 }
 
 void CuteTextBase::UIAvailable() {
 	SetImportMenu();
-	if (extender) {
+	if (extender_) {
 		SetHomeProperties();
-		extender->Initialise(this);
+		extender_->Initialise(this);
 	}
 }
 
@@ -4293,14 +4293,14 @@ void CuteTextBase::PerformOne(char *action) {
 	if (arg) {
 		arg++;
 		if (isprefix(action, "askfilename:")) {
-			extender->OnMacro("filename", filePath_.AsUTF8().c_str());
+			extender_->OnMacro("filename", filePath_.AsUTF8().c_str());
 		} else if (isprefix(action, "askproperty:")) {
 			PropertyToDirector(arg);
 		} else if (isprefix(action, "close:")) {
 			Close();
 			WindowSetFocus(wEditor_);
 		} else if (isprefix(action, "currentmacro:")) {
-			currentMacro = arg;
+			currentMacro_ = arg;
 		} else if (isprefix(action, "cwd:")) {
 			FilePath dirTarget(GUI::StringFromUTF8(arg));
 			if (!dirTarget.SetWorkingDirectory()) {
@@ -4347,7 +4347,7 @@ void CuteTextBase::PerformOne(char *action) {
 		} else if (isprefix(action, "macrocommand:")) {
 			ExecuteMacroCommand(arg);
 		} else if (isprefix(action, "macroenable:")) {
-			macrosEnabled = atoi(arg);
+			macrosEnabled_ = atoi(arg);
 			SetToolsMenu();
 		} else if (isprefix(action, "macrolist:")) {
 			StartMacroList(arg);
@@ -4380,8 +4380,8 @@ void CuteTextBase::PerformOne(char *action) {
 			if (*arg) {
 				SaveSessionFile(GUI::StringFromUTF8(arg).c_str());
 			}
-		} else if (isprefix(action, "extender:")) {
-			extender->OnExecute(arg);
+		} else if (isprefix(action, "extender_:")) {
+			extender_->OnExecute(arg);
 		} else if (isprefix(action, "focus:")) {
 			ActivateWindow(arg);
 		}
@@ -4400,25 +4400,25 @@ static bool IsSwitchCharacter(GUI::gui_char ch) {
 void CuteTextBase::EnumProperties(const char *propkind) {
 	PropSetFile *pf = NULL;
 
-	if (!extender)
+	if (!extender_)
 		return;
 	if (!strcmp(propkind, "dyn")) {
 		SelectionIntoProperties(); // Refresh properties ...
-		pf = &props;
+		pf = &props_;
 	} else if (!strcmp(propkind, "local"))
-		pf = &propsLocal;
+		pf = &propsLocal_;
 	else if (!strcmp(propkind, "directory"))
-		pf = &propsDirectory;
+		pf = &propsDirectory_;
 	else if (!strcmp(propkind, "user"))
-		pf = &propsUser;
+		pf = &propsUser_;
 	else if (!strcmp(propkind, "base"))
-		pf = &propsBase;
+		pf = &propsBase_;
 	else if (!strcmp(propkind, "embed"))
-		pf = &propsEmbed;
+		pf = &propsEmbed_;
 	else if (!strcmp(propkind, "platform"))
-		pf = &propsPlatform;
+		pf = &propsPlatform_;
 	else if (!strcmp(propkind, "abbrev"))
-		pf = &propsAbbrev;
+		pf = &propsAbbrev_;
 
 	if (pf != NULL) {
 		const char *key = NULL;
@@ -4437,26 +4437,26 @@ void CuteTextBase::SendOneProperty(const char *kind, const char *key, const char
 	m += key;
 	m += "=";
 	m += val;
-	extender->SendProperty(m.c_str());
+	extender_->SendProperty(m.c_str());
 }
 
 void CuteTextBase::PropertyFromDirector(const char *arg) {
-	props.SetLine(arg);
+	props_.SetLine(arg);
 }
 
 void CuteTextBase::PropertyToDirector(const char *arg) {
-	if (!extender)
+	if (!extender_)
 		return;
 	SelectionIntoProperties();
-	const std::string gotprop = props.GetString(arg);
-	extender->OnMacro("macro:stringinfo", gotprop.c_str());
+	const std::string gotprop = props_.GetString(arg);
+	extender_->OnMacro("macro:stringinfo", gotprop.c_str());
 }
 
 /**
  * Menu/Toolbar command "Record".
  */
 void CuteTextBase::StartRecordMacro() {
-	recording = true;
+	recording_ = true;
 	CheckMenus();
 	wEditor_.Call(SCI_STARTRECORD);
 }
@@ -4465,7 +4465,7 @@ void CuteTextBase::StartRecordMacro() {
  * Received a SCN_MACRORECORD from Scintilla: send it to director.
  */
 bool CuteTextBase::RecordMacroCommand(const SCNotification *notification) {
-	if (extender) {
+	if (extender_) {
 		std::string sMessage = StdStringFromInteger(notification->message);
 		sMessage += ";";
 		sMessage += StdStringFromSizeT(static_cast<size_t>(notification->wParam));
@@ -4479,7 +4479,7 @@ bool CuteTextBase::RecordMacroCommand(const SCNotification *notification) {
 			//format : "<message>;<wParam>;0;"
 			sMessage += "0;";
 		}
-		const bool handled = extender->OnMacro("macro:record", sMessage.c_str());
+		const bool handled = extender_->OnMacro("macro:record", sMessage.c_str());
 		return handled;
 	}
 	return true;
@@ -4490,9 +4490,9 @@ bool CuteTextBase::RecordMacroCommand(const SCNotification *notification) {
  */
 void CuteTextBase::StopRecordMacro() {
 	wEditor_.Call(SCI_STOPRECORD);
-	if (extender)
-		extender->OnMacro("macro:stoprecord", "");
-	recording = false;
+	if (extender_)
+		extender_->OnMacro("macro:stoprecord", "");
+	recording_ = false;
 	CheckMenus();
 }
 
@@ -4501,8 +4501,8 @@ void CuteTextBase::StopRecordMacro() {
  * Through this call, user has access to all macros in Filerx.
  */
 void CuteTextBase::AskMacroList() {
-	if (extender)
-		extender->OnMacro("macro:getlist", "");
+	if (extender_)
+		extender_->OnMacro("macro:getlist", "");
 }
 
 /**
@@ -4520,8 +4520,8 @@ bool CuteTextBase::StartMacroList(const char *words) {
  * User has chosen a macro in the list. Ask director to execute it.
  */
 void CuteTextBase::ContinueMacroList(const char *stext) {
-	if ((extender) && (*stext != '\0')) {
-		currentMacro = stext;
+	if ((extender_) && (*stext != '\0')) {
+		currentMacro_ = stext;
 		StartPlayMacro();
 	}
 }
@@ -4530,8 +4530,8 @@ void CuteTextBase::ContinueMacroList(const char *stext) {
  * Menu/Toolbar command "Play current macro" (or called from ContinueMacroList).
  */
 void CuteTextBase::StartPlayMacro() {
-	if (extender)
-		extender->OnMacro("macro:run", currentMacro.c_str());
+	if (extender_)
+		extender_->OnMacro("macro:run", currentMacro_.c_str());
 }
 
 /*
@@ -4634,7 +4634,7 @@ void CuteTextBase::ExecuteMacroCommand(const char *command) {
 		rep = wEditor_.Call(message, wParam, lParam);
 	if (*params == 'I')
 		sprintf(&tbuff[alen], "%0d", rep);
-	extender->OnMacro("macro", tbuff.c_str());
+	extender_->OnMacro("macro", tbuff.c_str());
 }
 
 /**
@@ -4698,7 +4698,7 @@ bool CuteTextBase::ProcessCommandLine(const GUI::gui_string &args, int phase) {
 					}
 				} else {
 					if (evaluate) {
-						props.ReadLine(GUI::UTF8FromString(arg).c_str(), PropSetFile::rlActive,
+						props_.ReadLine(GUI::UTF8FromString(arg).c_str(), PropSetFile::rlActive,
 							FilePath::GetWorkingDirectory(), filter_, NULL, 0);
 					}
 				}
@@ -4709,9 +4709,9 @@ bool CuteTextBase::ProcessCommandLine(const GUI::gui_string &args, int phase) {
 			else
 				evaluate = true;
 
-			if (!buffers.initialised) {
+			if (!buffers_.initialised) {
 				InitialiseBuffers();
-				if (props.GetInt("save.recent"))
+				if (props_.GetInt("save.recent"))
 					RestoreRecentMenu();
 			}
 
@@ -4722,15 +4722,15 @@ bool CuteTextBase::ProcessCommandLine(const GUI::gui_string &args, int phase) {
 	if (phase == 1) {
 		// If we have finished with all args and no buffer is open
 		// try to load session.
-		if (!buffers.initialised) {
+		if (!buffers_.initialised) {
 			InitialiseBuffers();
-			if (props.GetInt("save.recent"))
+			if (props_.GetInt("save.recent"))
 				RestoreRecentMenu();
-			if (props.GetInt("buffers") && props.GetInt("save.session"))
+			if (props_.GetInt("buffers") && props_.GetInt("save.session"))
 				RestoreSession();
 		}
 		// No open file after session load so create empty document.
-		if (filePath_.IsUntitled() && buffers.length == 1 && !buffers.buffers[0].isDirty) {
+		if (filePath_.IsUntitled() && buffers_.length == 1 && !buffers_.buffers_[0].isDirty) {
 			Open(GUI_TEXT(""));
 		}
 	}
@@ -4774,20 +4774,20 @@ void CuteTextBase::Trace(const char *s) {
 }
 
 std::string CuteTextBase::Property(const char *key) {
-	return props.GetExpandedString(key);
+	return props_.GetExpandedString(key);
 }
 
 void CuteTextBase::SetProperty(const char *key, const char *val) {
-	const std::string value = props.GetExpandedString(key);
+	const std::string value = props_.GetExpandedString(key);
 	if (value != val) {
-		props.Set(key, val);
-		needReadProperties = true;
+		props_.Set(key, val);
+		needReadProperties_ = true;
 	}
 }
 
 void CuteTextBase::UnsetProperty(const char *key) {
-	props.Unset(key);
-	needReadProperties = true;
+	props_.Unset(key);
+	needReadProperties_ = true;
 }
 
 uptr_t CuteTextBase::GetInstance() {

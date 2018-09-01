@@ -16,13 +16,13 @@ CuteFrameWin::CuteFrameWin() : CuteFrameBase() {
     app_ = this;
 
     /*contents.SetSciTE(this);
-    contents.SetLocalizer(&localiser);
-    backgroundStrip.SetLocalizer(&localiser);
-    searchStrip.SetLocalizer(&localiser);
+    contents.SetLocalizer(&localiser_);
+    backgroundStrip.SetLocalizer(&localiser_);
+    searchStrip.SetLocalizer(&localiser_);
     searchStrip.SetSearcher(this);
-    findStrip.SetLocalizer(&localiser);
+    findStrip.SetLocalizer(&localiser_);
     findStrip.SetSearcher(this);
-    replaceStrip.SetLocalizer(&localiser);
+    replaceStrip.SetLocalizer(&localiser_);
     replaceStrip.SetSearcher(this);*/
 
     flatterUI_ = UIShouldBeFlat();
@@ -47,11 +47,11 @@ CuteFrameWin::CuteFrameWin() : CuteFrameBase() {
     hWriteSubProcess = NULL;
     subProcessGroupId = 0;
 
-    pathAbbreviations = GetAbbrevPropertiesFileName();
+    pathAbbreviations_ = GetAbbrevPropertiesFileName();
 
     // System type properties are stored in the platform properties.
-    propsPlatform.Set("PLAT_WIN", "1");
-    propsPlatform.Set("PLAT_WINNT", "1");
+    propsPlatform_.Set("PLAT_WIN", "1");
+    propsPlatform_.Set("PLAT_WINNT", "1");
 
     ReadEnvironment();
 
@@ -59,7 +59,7 @@ CuteFrameWin::CuteFrameWin() : CuteFrameBase() {
 
     SetScaleFactor(0);
 
-    tbLarge = props.GetInt("toolbar.large");
+    tbLarge = props_.GetInt("toolbar.large");
     /// Need to copy properties to variables before setting up window
     SetPropertiesInitial();
     ReadAbbrevPropFile();

@@ -83,7 +83,7 @@ void SciTEBase::SaveToXML(const FilePath &saveName) {
 	RemoveFindMarks();
 	wEditor_.Call(SCI_COLOURISE, 0, -1);
 
-	int tabSize = props.GetInt("tabsize");
+	int tabSize = props_.GetInt("tabsize");
 	if (tabSize == 0) {
 		tabSize = 4;
 	}
@@ -97,8 +97,8 @@ void SciTEBase::SaveToXML(const FilePath &saveName) {
 
 	if (fp) {
 
-		const bool collapseSpaces = (props.GetInt("export.xml.collapse.spaces", 1) == 1);
-		const bool collapseLines  = (props.GetInt("export.xml.collapse.lines", 1) == 1);
+		const bool collapseSpaces = (props_.GetInt("export.xml.collapse.spaces", 1) == 1);
+		const bool collapseLines  = (props_.GetInt("export.xml.collapse.lines", 1) == 1);
 
 		fprintf(fp, "<?xml version='1.0' encoding='%s'?>\n", (codePage_ == SC_CP_UTF8) ? "utf-8" : "ascii");
 

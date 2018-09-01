@@ -85,14 +85,14 @@ void SciTEBase::SetFileName(const FilePath &openName, bool fixCase) {
 
 	ReadLocalPropFile();
 
-	props.Set("FilePath", filePath_.AsUTF8().c_str());
-	props.Set("FileDir", filePath_.Directory().AsUTF8().c_str());
-	props.Set("FileName", filePath_.BaseName().AsUTF8().c_str());
-	props.Set("FileExt", filePath_.Extension().AsUTF8().c_str());
-	props.Set("FileNameExt", FileNameExt().AsUTF8().c_str());
+	props_.Set("FilePath", filePath_.AsUTF8().c_str());
+	props_.Set("FileDir", filePath_.Directory().AsUTF8().c_str());
+	props_.Set("FileName", filePath_.BaseName().AsUTF8().c_str());
+	props_.Set("FileExt", filePath_.Extension().AsUTF8().c_str());
+	props_.Set("FileNameExt", FileNameExt().AsUTF8().c_str());
 
 	SetWindowName();
-	if (buffers.buffers.size() > 0)
+	if (buffers_.buffers_.size() > 0)
 		CurrentBuffer()->file.Set(filePath_);
 }
 
@@ -141,7 +141,7 @@ void SciTEBase::CountLineEnds(int &linesCR, int &linesLF, int &linesCRLF) {
 
 void SciTEBase::DiscoverEOLSetting() {
 	SetEol();
-	if (props.GetInt("eol.auto")) {
+	if (props_.GetInt("eol.auto")) {
 		int linesCR;
 		int linesLF;
 		int linesCRLF;
@@ -182,7 +182,7 @@ std::string SciTEBase::DiscoverLanguage() {
 		while (*word) {
 			std::string propShBang("shbang.");
 			propShBang.append(word);
-			std::string langShBang = props.GetExpandedString(propShBang.c_str());
+			std::string langShBang = props_.GetExpandedString(propShBang.c_str());
 			if (langShBang.length()) {
 				languageOverride = langShBang;
 			}
@@ -285,11 +285,11 @@ void SciTEBase::OpenCurrentFile(long long fileSize, bool suppressMessage, bool a
 		try {
 			sptr_t docOptions = SC_DOCUMENTOPTION_DEFAULT;
 
-			const long long sizeLarge = props.GetLongLong("file.size.large");
+			const long long sizeLarge = props_.GetLongLong("file.size.large");
 			if (sizeLarge && (fileSize > sizeLarge))
 				docOptions |= SC_DOCUMENTOPTION_TEXT_LARGE;
 
-			const long long sizeNoStyles = props.GetLongLong("file.size.no.styles");
+			const long long sizeNoStyles = props_.GetLongLong("file.size.no.styles");
 			if (sizeNoStyles && (fileSize > sizeNoStyles))
 				docOptions |= SC_DOCUMENTOPTION_STYLES_NONE;
 
@@ -301,7 +301,7 @@ void SciTEBase::OpenCurrentFile(long long fileSize, bool suppressMessage, bool a
 			return;
 		}
 		CurrentBuffer()->pFileWorker = new FileLoader(this, pdocLoad, filePath_, static_cast<size_t>(fileSize), fp);
-		CurrentBuffer()->pFileWorker->sleepTime = props.GetInt("asynchronous.sleep");
+		CurrentBuffer()->pFileWorker->sleepTime = props_.GetInt("asynchronous.sleep");
 		PerformOnNewThread(CurrentBuffer()->pFileWorker);
 	} else {
 		wEditor_.Call(SCI_ALLOCATE, static_cast<uptr_t>(fileSize) + 1000);
@@ -340,37 +340,37 @@ void SciTEBase::OpenCurrentFile(long long fileSize, bool suppressMessage, bool a
 
 void SciTEBase::TextRead(FileWorker *pFileWorker) {
 	FileLoader *pFileLoader = static_cast<FileLoader *>(pFileWorker);
-	const int iBuffer = buffers.GetDocumentByWorker(pFileLoader);
+	const int iBuffer = buffers_.GetDocumentByWorker(pFileLoader);
 	// May not be found if load cancelled
 	if (iBuffer >= 0) {
-		buffers.buffers[iBuffer].unicodeMode = pFileLoader->unicodeMode;
-		buffers.buffers[iBuffer].lifeState = Buffer::kReadAll;
+		buffers_.buffers_[iBuffer].unicodeMode = pFileLoader->unicodeMode;
+		buffers_.buffers_[iBuffer].lifeState = Buffer::kReadAll;
 		if (pFileLoader->err) {
 			GUI::gui_string msg = LocaliseMessage("Could not open file '^0'.", pFileLoader->path.AsInternal());
 			WindowMessageBox(wCuteText_, msg);
 			// Should refuse to save when failure occurs
-			buffers.buffers[iBuffer].lifeState = Buffer::kEmpty;
+			buffers_.buffers_[iBuffer].lifeState = Buffer::kEmpty;
 		}
 		// Switch documents
 		const sptr_t pdocLoading = reinterpret_cast<sptr_t>(pFileLoader->pLoader->ConvertToDocument());
 		pFileLoader->pLoader = 0;
 		SwitchDocumentAt(iBuffer, pdocLoading);
-		if (iBuffer == buffers.Current()) {
+		if (iBuffer == buffers_.Current()) {
 			CompleteOpen(kOcCompleteCurrent);
-			if (extender)
-				extender->OnOpen(buffers.buffers[iBuffer].file.AsUTF8().c_str());
-			RestoreState(buffers.buffers[iBuffer], true);
-			DisplayAround(buffers.buffers[iBuffer].file);
+			if (extender_)
+				extender_->OnOpen(buffers_.buffers_[iBuffer].file.AsUTF8().c_str());
+			RestoreState(buffers_.buffers_[iBuffer], true);
+			DisplayAround(buffers_.buffers_[iBuffer].file);
 			wEditor_.Call(SCI_SCROLLCARET);
 		}
 	}
 }
 
 void SciTEBase::PerformDeferredTasks() {
-	if (buffers.buffers[buffers.Current()].futureDo & Buffer::kFdFinishSave) {
+	if (buffers_.buffers_[buffers_.Current()].futureDo & Buffer::kFdFinishSave) {
 		wEditor_.Call(SCI_SETSAVEPOINT);
 		wEditor_.Call(SCI_SETREADONLY, CurrentBuffer()->isReadOnly);
-		buffers.FinishedFuture(buffers.Current(), Buffer::kFdFinishSave);
+		buffers_.FinishedFuture(buffers_.Current(), Buffer::kFdFinishSave);
 	}
 }
 
@@ -402,13 +402,13 @@ void SciTEBase::CompleteOpen(OpenCompletion oc) {
 		// Override the code page if Unicode
 		codePage_ = SC_CP_UTF8;
 	} else {
-		codePage_ = props.GetInt("code.page");
+		codePage_ = props_.GetInt("code.page");
 	}
 	wEditor_.Call(SCI_SETCODEPAGE, codePage_);
 
 	DiscoverEOLSetting();
 
-	if (props.GetInt("indent.auto")) {
+	if (props_.GetInt("indent.auto")) {
 		DiscoverIndentSetting();
 	}
 
@@ -416,7 +416,7 @@ void SciTEBase::CompleteOpen(OpenCompletion oc) {
 		wEditor_.Call(SCI_SETUNDOCOLLECTION, 1);
 	}
 	wEditor_.Call(SCI_SETSAVEPOINT);
-	if (props.GetInt("fold.on.open") > 0) {
+	if (props_.GetInt("fold.on.open") > 0) {
 		FoldAll();
 	}
 	wEditor_.Call(SCI_GOTOPOS, 0);
@@ -428,7 +428,7 @@ void SciTEBase::CompleteOpen(OpenCompletion oc) {
 
 void SciTEBase::TextWritten(FileWorker *pFileWorker) {
 	const FileStorer *pFileStorer = static_cast<const FileStorer *>(pFileWorker);
-	const int iBuffer = buffers.GetDocumentByWorker(pFileStorer);
+	const int iBuffer = buffers_.GetDocumentByWorker(pFileStorer);
 
 	FilePath pathSaved = pFileStorer->path;
 	const int errSaved = pFileStorer->err;
@@ -437,31 +437,31 @@ void SciTEBase::TextWritten(FileWorker *pFileWorker) {
 	// May not be found if save cancelled or buffer closed
 	if (iBuffer >= 0) {
 		// Complete and release
-		buffers.buffers[iBuffer].CompleteStoring();
+		buffers_.buffers_[iBuffer].CompleteStoring();
 		if (errSaved || cancelledSaved) {
 			// Background save failed (possibly out-of-space) so resurrect the
 			// buffer so can be saved to another disk or retried after making room.
-			buffers.SetVisible(iBuffer, true);
+			buffers_.SetVisible(iBuffer, true);
 			SetBuffersMenu();
-			if (iBuffer == buffers.Current()) {
+			if (iBuffer == buffers_.Current()) {
 				wEditor_.Call(SCI_SETREADONLY, CurrentBuffer()->isReadOnly);
 			}
 		} else {
-			if (!buffers.GetVisible(iBuffer)) {
-				buffers.RemoveInvisible(iBuffer);
+			if (!buffers_.GetVisible(iBuffer)) {
+				buffers_.RemoveInvisible(iBuffer);
 			}
-			if (iBuffer == buffers.Current()) {
+			if (iBuffer == buffers_.Current()) {
 				wEditor_.Call(SCI_SETREADONLY, CurrentBuffer()->isReadOnly);
 				if (pathSaved.SameNameAs(CurrentBuffer()->file)) {
 					wEditor_.Call(SCI_SETSAVEPOINT);
 				}
-				if (extender)
-					extender->OnSave(buffers.buffers[iBuffer].file.AsUTF8().c_str());
+				if (extender_)
+					extender_->OnSave(buffers_.buffers_[iBuffer].file.AsUTF8().c_str());
 			} else {
-				buffers.buffers[iBuffer].isDirty = false;
-				buffers.buffers[iBuffer].failedSave = false;
+				buffers_.buffers_[iBuffer].isDirty = false;
+				buffers_.buffers_[iBuffer].failedSave = false;
 				// Need to make writable and set save point when next receive focus.
-				buffers.AddFuture(iBuffer, Buffer::kFdFinishSave);
+				buffers_.AddFuture(iBuffer, Buffer::kFdFinishSave);
 				SetBuffersMenu();
 			}
 		}
@@ -478,17 +478,17 @@ void SciTEBase::TextWritten(FileWorker *pFileWorker) {
 		ReloadProperties();
 	}
 	UpdateStatusBar(true);
-	if (!jobQueue.executing && (jobQueue.HasCommandToRun())) {
+	if (!jobQueue_.executing && (jobQueue_.HasCommandToRun())) {
 		Execute();
 	}
-	if (quitting && !buffers.SavingInBackground()) {
+	if (quitting_ && !buffers_.SavingInBackground()) {
 		QuitProgram();
 	}
 }
 
 void SciTEBase::UpdateProgress(Worker *) {
 	GUI::gui_string prog;
-	BackgroundActivities bgActivities = buffers.CountBackgroundActivities();
+	BackgroundActivities bgActivities = buffers_.CountBackgroundActivities();
 	const int countBoth = bgActivities.loaders + bgActivities.storers;
 	if (countBoth == 0) {
 		// Should hide UI
@@ -524,9 +524,9 @@ bool SciTEBase::Open(const FilePath &file, OpenFlags of) {
 		return false;
 	}
 
-	const int index = buffers.GetDocumentByName(absPath);
+	const int index = buffers_.GetDocumentByName(absPath);
 	if (index >= 0) {
-		buffers.SetVisible(index, true);
+		buffers_.SetVisible(index, true);
 		SetDocumentAt(index);
 		RemoveFileFromStack(absPath);
 		DeleteFileStackMenu();
@@ -551,7 +551,7 @@ bool SciTEBase::Open(const FilePath &file, OpenFlags of) {
 	}
 	if (fileSize > 0) {
 		// Real file, not empty buffer
-		const long long maxSize = props.GetLongLong("max.file.size", 2000000000LL);
+		const long long maxSize = props_.GetLongLong("max.file.size", 2000000000LL);
 		if (maxSize > 0 && fileSize > maxSize) {
 			const GUI::gui_string sSize = GUI::StringFromLongLong(fileSize);
 			const GUI::gui_string sMaxSize = GUI::StringFromLongLong(maxSize);
@@ -566,12 +566,12 @@ bool SciTEBase::Open(const FilePath &file, OpenFlags of) {
 		}
 	}
 
-	if (buffers.size() == buffers.length) {
+	if (buffers_.size() == buffers_.length) {
 		AddFileToStack(RecentFile(filePath_, GetSelectedRange(), GetCurrentScrollPosition()));
 		ClearDocument();
 		CurrentBuffer()->lifeState = Buffer::kOpen;
-		if (extender)
-			extender->InitBuffer(buffers.Current());
+		if (extender_)
+			extender_->InitBuffer(buffers_.Current());
 	} else {
 		if (index < 0 || !(of & kOfForceLoad)) { // No new buffer, already opened
 			New();
@@ -581,16 +581,16 @@ bool SciTEBase::Open(const FilePath &file, OpenFlags of) {
 	assert(CurrentBufferConst()->pFileWorker == NULL);
 	SetFileName(absPath);
 
-	propsDiscovered.Clear();
-	std::string discoveryScript = props.GetExpandedString("command.discover.properties");
+	propsDiscovered_.Clear();
+	std::string discoveryScript = props_.GetExpandedString("command.discover.properties");
 	if (discoveryScript.length()) {
 		std::string propertiesText = CommandExecute(GUI::StringFromUTF8(discoveryScript).c_str(),
 			absPath.Directory().AsInternal());
 		if (propertiesText.size()) {
-			propsDiscovered.ReadFromMemory(propertiesText.c_str(), propertiesText.size(), absPath.Directory(), filter_, NULL, 0);
+			propsDiscovered_.ReadFromMemory(propertiesText.c_str(), propertiesText.size(), absPath.Directory(), filter_, NULL, 0);
 		}
 	}
-	CurrentBuffer()->props = propsDiscovered;
+	CurrentBuffer()->props_ = propsDiscovered_;
 	CurrentBuffer()->overrideExtension = "";
 	ReadProperties();
 	SetIndentSettings();
@@ -609,7 +609,7 @@ bool SciTEBase::Open(const FilePath &file, OpenFlags of) {
 			wEditor_.Call(SCI_SETUNDOCOLLECTION, 0);
 		}
 
-		asynchronous = (fileSize > props.GetInt("background.open.size", -1)) &&
+		asynchronous = (fileSize > props_.GetInt("background.open.size", -1)) &&
 			!(of & (kOfPreserveUndo|kOfSynchronous));
 		OpenCurrentFile(fileSize, of & kOfQuiet, asynchronous);
 
@@ -618,18 +618,18 @@ bool SciTEBase::Open(const FilePath &file, OpenFlags of) {
 		} else {
 			wEditor_.Call(SCI_EMPTYUNDOBUFFER);
 		}
-		CurrentBuffer()->isReadOnly = props.GetInt("read.only");
+		CurrentBuffer()->isReadOnly = props_.GetInt("read.only");
 		wEditor_.Call(SCI_SETREADONLY, CurrentBuffer()->isReadOnly);
 	}
 	RemoveFileFromStack(filePath_);
 	DeleteFileStackMenu();
 	SetFileStackMenu();
 	SetWindowName();
-	if (lineNumbers && lineNumbersExpand)
+	if (lineNumbers_ && lineNumbersExpand_)
 		SetLineNumberWidth();
 	UpdateStatusBar(true);
-	if (extender && !asynchronous)
-		extender->OnOpen(filePath_.AsUTF8().c_str());
+	if (extender_ && !asynchronous)
+		extender_->OnOpen(filePath_.AsUTF8().c_str());
 	return true;
 }
 
@@ -662,7 +662,7 @@ bool SciTEBase::OpenSelected() {
 	}
 
 	std::string fileNameForExtension = ExtensionFileName();
-	std::string openSuffix = props.GetNewExpandString("open.suffix.", fileNameForExtension.c_str());
+	std::string openSuffix = props_.GetNewExpandString("open.suffix.", fileNameForExtension.c_str());
 	selName += openSuffix;
 
 	if (EqualCaseInsensitive(selName.c_str(), FileNameExt().AsUTF8().c_str()) || EqualCaseInsensitive(selName.c_str(), filePath_.AsUTF8().c_str())) {
@@ -712,7 +712,7 @@ bool SciTEBase::OpenSelected() {
 		path = filePath_.Directory();
 		// If not there, look in openpath
 		if (!Exists(path.AsInternal(), selFN.c_str(), NULL)) {
-			GUI::gui_string openPath = GUI::StringFromUTF8(props.GetNewExpandString(
+			GUI::gui_string openPath = GUI::StringFromUTF8(props_.GetNewExpandString(
 			            "openpath.", fileNameForExtension.c_str()));
 			while (openPath.length()) {
 				GUI::gui_string tryPath(openPath);
@@ -764,14 +764,14 @@ void SciTEBase::Revert() {
 }
 
 void SciTEBase::CheckReload() {
-	if (props.GetInt("load.on.activate")) {
+	if (props_.GetInt("load.on.activate")) {
 		// Make a copy of fullPath as otherwise it gets aliased in Open
 		const time_t newModTime = filePath_.ModifiedTime();
 		if ((newModTime != 0) && (newModTime != CurrentBuffer()->fileModTime)) {
 			RecentFile rf = GetFilePosition();
-			const OpenFlags of = props.GetInt("reload.preserves.undo") ? kOfPreserveUndo : kOfNone;
-			if (CurrentBuffer()->isDirty || props.GetInt("are.you.sure.on.reload") != 0) {
-				if ((0 == dialogsOnScreen) && (newModTime != CurrentBuffer()->fileModLastAsk)) {
+			const OpenFlags of = props_.GetInt("reload.preserves.undo") ? kOfPreserveUndo : kOfNone;
+			if (CurrentBuffer()->isDirty || props_.GetInt("are.you.sure.on.reload") != 0) {
+				if ((0 == dialogsOnScreen_) && (newModTime != CurrentBuffer()->fileModLastAsk)) {
 					GUI::gui_string msg;
 					if (CurrentBuffer()->isDirty) {
 						msg = LocaliseMessage(
@@ -813,7 +813,7 @@ void SciTEBase::Activate(bool activeApp) {
 	if (activeApp) {
 		CheckReload();
 	} else {
-		if (props.GetInt("save.on.deactivate")) {
+		if (props_.GetInt("save.on.deactivate")) {
 			SaveTitledBuffers();
 		}
 	}
@@ -827,7 +827,7 @@ FilePath SciTEBase::SaveName(const char *ext) const {
 			dot--;
 		}
 		if (dot >= 0) {
-			const int keepExt = props.GetInt("export.keep.ext");
+			const int keepExt = props_.GetInt("export.keep.ext");
 			if (keepExt == 0) {
 				savePath.erase(dot);
 			} else if (keepExt == 2) {
@@ -850,7 +850,7 @@ SciTEBase::SaveResult SciTEBase::SaveIfUnsure(bool forceQuestion, SaveFlags sf) 
 			return kSaveCompleted;
 	}
 	if ((CurrentBuffer()->isDirty) && (LengthDocument() || !filePath_.IsUntitled() || forceQuestion)) {
-		if (props.GetInt("are.you.sure", 1) ||
+		if (props_.GetInt("are.you.sure", 1) ||
 		        filePath_.IsUntitled() ||
 		        forceQuestion) {
 					GUI::gui_string msg;
@@ -877,34 +877,34 @@ SciTEBase::SaveResult SciTEBase::SaveIfUnsureAll() {
 	if (SaveAllBuffers(false) == kSaveCancelled) {
 		return kSaveCancelled;
 	}
-	if (props.GetInt("save.recent")) {
-		for (int i = 0; i < buffers.lengthVisible; ++i) {
-			Buffer buff = buffers.buffers[i];
+	if (props_.GetInt("save.recent")) {
+		for (int i = 0; i < buffers_.lengthVisible; ++i) {
+			Buffer buff = buffers_.buffers_[i];
 			AddFileToStack(buff.file);
 		}
 	}
-	if (props.GetInt("save.session") || props.GetInt("save.position") || props.GetInt("save.recent")) {
+	if (props_.GetInt("save.session") || props_.GetInt("save.position") || props_.GetInt("save.recent")) {
 		SaveSessionFile(GUI_TEXT(""));
 	}
 
-	if (extender && extender->NeedsOnClose()) {
-		// Ensure extender is told about each buffer closing
-		for (int k = 0; k < buffers.lengthVisible; k++) {
+	if (extender_ && extender_->NeedsOnClose()) {
+		// Ensure extender_ is told about each buffer closing
+		for (int k = 0; k < buffers_.lengthVisible; k++) {
 			SetDocumentAt(k);
-			extender->OnClose(filePath_.AsUTF8().c_str());
+			extender_->OnClose(filePath_.AsUTF8().c_str());
 		}
 	}
 
 	// Definitely going to exit now, so delete all documents
 	// Set editor back to initial document
-	if (buffers.lengthVisible > 0) {
-		wEditor_.Call(SCI_SETDOCPOINTER, 0, buffers.buffers[0].doc);
+	if (buffers_.lengthVisible > 0) {
+		wEditor_.Call(SCI_SETDOCPOINTER, 0, buffers_.buffers_[0].doc);
 	}
 	// Release all the extra documents
-	for (int j = 0; j < buffers.size(); j++) {
-		if (buffers.buffers[j].doc && !buffers.buffers[j].pFileWorker) {
-			wEditor_.Call(SCI_RELEASEDOCUMENT, 0, buffers.buffers[j].doc);
-			buffers.buffers[j].doc = 0;
+	for (int j = 0; j < buffers_.size(); j++) {
+		if (buffers_.buffers_[j].doc && !buffers_.buffers_[j].pFileWorker) {
+			wEditor_.Call(SCI_RELEASEDOCUMENT, 0, buffers_.buffers_[j].doc);
+			buffers_.buffers_[j].doc = 0;
 		}
 	}
 	// Initial document will be deleted when editor deleted
@@ -912,11 +912,11 @@ SciTEBase::SaveResult SciTEBase::SaveIfUnsureAll() {
 }
 
 SciTEBase::SaveResult SciTEBase::SaveIfUnsureForBuilt() {
-	if (props.GetInt("save.all.for.build")) {
-		return SaveAllBuffers(!props.GetInt("are.you.sure.for.build"));
+	if (props_.GetInt("save.all.for.build")) {
+		return SaveAllBuffers(!props_.GetInt("are.you.sure.for.build"));
 	}
 	if (CurrentBuffer()->isDirty) {
-		if (props.GetInt("are.you.sure.for.build"))
+		if (props_.GetInt("are.you.sure.for.build"))
 			return SaveIfUnsure(true);
 
 		Save();
@@ -1072,8 +1072,8 @@ bool SciTEBase::PrepareBufferForSave(const FilePath &saveName) {
 	if (ensureConsistentLineEnds_)
 		wEditor_.Call(SCI_CONVERTEOLS, wEditor_.Call(SCI_GETEOLMODE));
 
-	if (extender)
-		retVal = extender->OnBeforeSave(saveName.AsUTF8().c_str());
+	if (extender_)
+		retVal = extender_->OnBeforeSave(saveName.AsUTF8().c_str());
 
 	wEditor_.Call(SCI_ENDUNDOACTION);
 
@@ -1095,7 +1095,7 @@ bool SciTEBase::SaveBuffer(const FilePath &saveName, SaveFlags sf) {
 				wEditor_.Call(SCI_SETREADONLY, 1);
 				const char *documentBytes = reinterpret_cast<const char *>(wEditor_.CallReturnPointer(SCI_GETCHARACTERPOINTER));
 				CurrentBuffer()->pFileWorker = new FileStorer(this, documentBytes, saveName, lengthDoc, fp, CurrentBuffer()->unicodeMode, (sf & kSfProgressVisible));
-				CurrentBuffer()->pFileWorker->sleepTime = props.GetInt("asynchronous.sleep");
+				CurrentBuffer()->pFileWorker->sleepTime = props_.GetInt("asynchronous.sleep");
 				if (PerformOnNewThread(CurrentBuffer()->pFileWorker)) {
 					retVal = true;
 				} else {
@@ -1132,8 +1132,8 @@ bool SciTEBase::SaveBuffer(const FilePath &saveName, SaveFlags sf) {
 		}
 	}
 
-	if (retVal && extender && (sf & kSfSynchronous)) {
-		extender->OnSave(saveName.AsUTF8().c_str());
+	if (retVal && extender_ && (sf & kSfSynchronous)) {
+		extender_->OnSave(saveName.AsUTF8().c_str());
 	}
 	UpdateStatusBar(true);
 	return retVal;
@@ -1172,9 +1172,9 @@ bool SciTEBase::Save(SaveFlags sf) {
 			return true;
 		}
 
-		if (props.GetInt("save.deletes.first")) {
+		if (props_.GetInt("save.deletes.first")) {
 			filePath_.Remove();
-		} else if (props.GetInt("save.check.modified.time")) {
+		} else if (props_.GetInt("save.check.modified.time")) {
 			const time_t newModTime = filePath_.ModifiedTime();
 			if ((newModTime != 0) && (CurrentBuffer()->fileModTime != 0) &&
 				(newModTime != CurrentBuffer()->fileModTime)) {
@@ -1187,8 +1187,8 @@ bool SciTEBase::Save(SaveFlags sf) {
 			}
 		}
 
-		if ((LengthDocument() <= props.GetInt("background.save.size", -1)) ||
-			(buffers.SingleBuffer()))
+		if ((LengthDocument() <= props_.GetInt("background.save.size", -1)) ||
+			(buffers_.SingleBuffer()))
 			sf = static_cast<SaveFlags>(sf | kSfSynchronous);
 		if (SaveBuffer(filePath_, sf)) {
 			CurrentBuffer()->SetTimeFromFile();
@@ -1212,12 +1212,12 @@ bool SciTEBase::Save(SaveFlags sf) {
 		}
 		return true;
 	} else {
-		if (props.GetString("save.path.suggestion").length()) {
+		if (props_.GetString("save.path.suggestion").length()) {
 			const time_t t = time(NULL);
 			char timeBuff[15];
 			strftime(timeBuff, sizeof(timeBuff), "%Y%m%d%H%M%S",  localtime(&t));
 			PropSetFile propsSuggestion;
-			propsSuggestion.superPS = &props;  // Allow access to other settings
+			propsSuggestion.superPS = &props_;  // Allow access to other settings
 			propsSuggestion.Set("TimeStamp", timeBuff);
 			propsSuggestion.Set("SciteUserHome", GetSciteUserHome().AsUTF8().c_str());
 			std::string savePathSuggestion = propsSuggestion.GetExpandedString("save.path.suggestion");
@@ -1242,13 +1242,13 @@ void SciTEBase::SaveAs(const GUI::gui_char *file, bool fixCase) {
 	Redraw();
 	SetWindowName();
 	BuffersMenu();
-	if (extender)
-		extender->OnSave(filePath_.AsUTF8().c_str());
+	if (extender_)
+		extender_->OnSave(filePath_.AsUTF8().c_str());
 }
 
 bool SciTEBase::SaveIfNotOpen(const FilePath &destFile, bool fixCase) {
 	FilePath absPath = destFile.AbsolutePath();
-	const int index = buffers.GetDocumentByName(absPath, true /* excludeCurrent */);
+	const int index = buffers_.GetDocumentByName(absPath, true /* excludeCurrent */);
 	if (index >= 0) {
 		GUI::gui_string msg = LocaliseMessage(
 			    "File '^0' is already open in another buffer.", destFile.AsInternal());
@@ -1295,10 +1295,10 @@ void SciTEBase::OpenFromStdin(bool UseOutputPane) {
 		lenFile = fread(&data[0], 1, data.size(), stdin);
 	}
 	if (UseOutputPane) {
-		if (props.GetInt("split.vertical") == 0) {
-			heightOutput = 2000;
+		if (props_.GetInt("split.vertical") == 0) {
+			heightOutput_ = 2000;
 		} else {
-			heightOutput = 500;
+			heightOutput_ = 500;
 		}
 		SizeSubWindows();
 	} else {
@@ -1314,7 +1314,7 @@ void SciTEBase::OpenFromStdin(bool UseOutputPane) {
 		// Override the code page if Unicode
 		codePage_ = SC_CP_UTF8;
 	} else {
-		codePage_ = props.GetInt("code.page");
+		codePage_ = props_.GetInt("code.page");
 	}
 	if (UseOutputPane) {
 		wOutput_.Call(SCI_SETSEL, 0, 0);
@@ -1347,7 +1347,7 @@ void SciTEBase::OpenFilesFromStdin() {
 			* pNL = '\0';
 		Open(GUI::StringFromUTF8(data).c_str(), kOfQuiet);
 	}
-	if (buffers.lengthVisible == 0)
+	if (buffers_.lengthVisible == 0)
 		Open(GUI_TEXT(""));
 }
 
@@ -1479,7 +1479,7 @@ void SciTEBase::GrepRecursive(GrepFlags gf, const FilePath &baseDir, const char 
 	const size_t searchLength = strlen(searchString);
 	std::string os;
 	for (const FilePath &fPath : files) {
-		if (jobQueue.Cancelled())
+		if (jobQueue_.Cancelled())
 			return;
 		if (*fileTypes == '\0' || fPath.Matches(fileTypes)) {
 			//OutputAppendStringSynchronised(i->AsInternal());
@@ -1487,7 +1487,7 @@ void SciTEBase::GrepRecursive(GrepFlags gf, const FilePath &baseDir, const char 
 			FileReader fr(fPath, gf & kGrepMatchCase);
 			if ((gf & kGrepBinary) || !fr.BufferContainsNull()) {
 				while (const char *line = fr.Next()) {
-					if (((fr.LineNumber() % checkAfterLines) == 0) && jobQueue.Cancelled())
+					if (((fr.LineNumber() % checkAfterLines) == 0) && jobQueue_.Cancelled())
 						return;
 					const char *match = strstr(line, searchString);
 					if (match) {
@@ -1549,7 +1549,7 @@ void SciTEBase::InternalGrep(GrepFlags gf, const GUI::gui_char *directory, const
 	GrepRecursive(gf, FilePath(directory), searchString.c_str(), fileTypes);
 	if (!(gf & kGrepStdOut)) {
 		std::string sExitMessage(">");
-		if (jobQueue.TimeCommands()) {
+		if (jobQueue_.TimeCommands()) {
 			sExitMessage += "    Time: ";
 			sExitMessage += StdStringFromDouble(commandTime.Duration(), 3);
 		}

@@ -53,14 +53,14 @@
 void SciTEBase::SaveToHTML(const FilePath &saveName) {
 	RemoveFindMarks();
 	wEditor_.Call(SCI_COLOURISE, 0, -1);
-	int tabSize = props.GetInt("tabsize");
+	int tabSize = props_.GetInt("tabsize");
 	if (tabSize == 0)
 		tabSize = 4;
-	const int wysiwyg = props.GetInt("export.html.wysiwyg", 1);
-	const int tabs = props.GetInt("export.html.tabs", 0);
-	const int folding = props.GetInt("export.html.folding", 0);
-	const int onlyStylesUsed = props.GetInt("export.html.styleused", 0);
-	const int titleFullPath = props.GetInt("export.html.title.fullpath", 0);
+	const int wysiwyg = props_.GetInt("export.html.wysiwyg", 1);
+	const int tabs = props_.GetInt("export.html.tabs", 0);
+	const int folding = props_.GetInt("export.html.folding", 0);
+	const int onlyStylesUsed = props_.GetInt("export.html.styleused", 0);
+	const int titleFullPath = props_.GetInt("export.html.title.fullpath", 0);
 
 	const int lengthDoc = LengthDocument();
 	TextReader acc(wEditor_);
@@ -137,7 +137,7 @@ void SciTEBase::SaveToHTML(const FilePath &saveName) {
 			bgColour = sddef.back;
 		}
 
-		std::string sval = props.GetExpandedString("font.monospace");
+		std::string sval = props_.GetExpandedString("font.monospace");
 		StyleDefinition sdmono(sval.c_str());
 
 		for (int istyle = 0; istyle <= STYLE_MAX; istyle++) {

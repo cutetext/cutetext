@@ -201,7 +201,7 @@ void Job::Clear() {
 }
 
 
-JobQueue::JobQueue() : jobQueue(commandMax) {
+JobQueue::JobQueue() : jobQueue_(commandMax) {
 	mutex.reset(Mutex::Create());
 	clearBeforeExecute = false;
 	isBuilding = false;
@@ -260,7 +260,7 @@ long JobQueue::Cancelled() {
 }
 
 void JobQueue::ClearJobs() {
-	for (Job &ic : jobQueue) {
+	for (Job &ic : jobQueue_) {
 		ic.Clear();
 	}
 	commandCurrent = 0;
@@ -270,7 +270,7 @@ void JobQueue::AddCommand(const std::string &command, const FilePath &directory,
 	if ((commandCurrent < commandMax) && (command.length())) {
 		if (commandCurrent == 0)
 			jobUsesOutputPane = false;
-		jobQueue[commandCurrent] = Job(command, directory, jobType, input, flags);
+		jobQueue_[commandCurrent] = Job(command, directory, jobType, input, flags);
 		commandCurrent++;
 		if (jobType == jobCLI)
 			jobUsesOutputPane = true;

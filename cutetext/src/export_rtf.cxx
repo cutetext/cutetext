@@ -128,15 +128,15 @@ void SciTEBase::SaveToStreamRTF(std::ostream &os, int start, int end) {
 
 	StyleDefinition defaultStyle = StyleDefinitionFor(STYLE_DEFAULT);
 
-	int tabSize = props.GetInt("export.rtf.tabsize", props.GetInt("tabsize"));
-	const int wysiwyg = props.GetInt("export.rtf.wysiwyg", 1);
-	std::string fontFace = props.GetExpandedString("export.rtf.font.face");
+	int tabSize = props_.GetInt("export.rtf.tabsize", props_.GetInt("tabsize"));
+	const int wysiwyg = props_.GetInt("export.rtf.wysiwyg", 1);
+	std::string fontFace = props_.GetExpandedString("export.rtf.font.face");
 	if (fontFace.length()) {
 		defaultStyle.font = fontFace;
 	} else if (defaultStyle.font.length() == 0) {
 		defaultStyle.font = RTF_FONTFACE;
 	}
-	const int fontSize = props.GetInt("export.rtf.font.size", 0);
+	const int fontSize = props_.GetInt("export.rtf.font.size", 0);
 	if (fontSize > 0) {
 		defaultStyle.size = fontSize << 1;
 	} else if (defaultStyle.size == 0) {
@@ -145,8 +145,8 @@ void SciTEBase::SaveToStreamRTF(std::ostream &os, int start, int end) {
 		defaultStyle.size <<= 1;
 	}
 	const bool isUTF8 = wEditor_.Call(SCI_GETCODEPAGE) == SC_CP_UTF8;
-	const unsigned int characterset = props.GetInt("character.set", SC_CHARSET_DEFAULT);
-	const int tabs = props.GetInt("export.rtf.tabs", 0);
+	const unsigned int characterset = props_.GetInt("character.set", SC_CHARSET_DEFAULT);
+	const int tabs = props_.GetInt("export.rtf.tabs", 0);
 	if (tabSize == 0)
 		tabSize = 4;
 
