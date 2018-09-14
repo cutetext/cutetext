@@ -41,7 +41,7 @@
 #include "style_definition.h"
 #include "propset_file.h"
 #include "style_writer.h"
-#include "extender_.h"
+#include "extender.h"
 #include "cutetext.h"
 #include "mutex.h"
 #include "job_queue.h"
@@ -995,7 +995,7 @@ int CuteTextBase::IncrementSearchMode() {
 }
 
 void CuteTextBase::FailedSaveMessageBox(const FilePath &filePathSaving) {
-	const GUI::gui_string msg = LocaliseMessage(
+	const GUI::GUIString msg = LocaliseMessage(
 		"Could not save file \"^0\".", filePathSaving.AsInternal());
 	WindowMessageBox(wCuteText_, msg);
 }
@@ -2021,8 +2021,8 @@ bool CuteTextBase::StartBlockComment() {
 
 	std::string comment = props_.GetString(base.c_str());
 	if (comment == "") { // user friendly error message box
-		GUI::gui_string sBase = GUI::StringFromUTF8(base);
-		GUI::gui_string error = LocaliseMessage(
+		GUI::GUIString sBase = GUI::StringFromUTF8(base);
+		GUI::GUIString error = LocaliseMessage(
 		            "Block comment variable '^0' is not defined in SciTE *.properties!", sBase.c_str());
 		WindowMessageBox(wCuteText_, error);
 		return true;
@@ -2119,10 +2119,10 @@ bool CuteTextBase::StartBoxComment() {
 	std::string middle_comment = props_.GetString(middle_base.c_str());
 	std::string end_comment = props_.GetString(end_base.c_str());
 	if (start_comment == "" || middle_comment == "" || end_comment == "") {
-		GUI::gui_string sStart = GUI::StringFromUTF8(start_base);
-		GUI::gui_string sMiddle = GUI::StringFromUTF8(middle_base);
-		GUI::gui_string sEnd = GUI::StringFromUTF8(end_base);
-		GUI::gui_string error = LocaliseMessage(
+		GUI::GUIString sStart = GUI::StringFromUTF8(start_base);
+		GUI::GUIString sMiddle = GUI::StringFromUTF8(middle_base);
+		GUI::GUIString sEnd = GUI::StringFromUTF8(end_base);
+		GUI::GUIString error = LocaliseMessage(
 		            "Box comment variables '^0', '^1' and '^2' are not defined in SciTE *.properties!",
 		            sStart.c_str(), sMiddle.c_str(), sEnd.c_str());
 		WindowMessageBox(wCuteText_, error);
@@ -2230,9 +2230,9 @@ bool CuteTextBase::StartStreamComment() {
 	std::string start_comment = props_.GetString(start_base.c_str());
 	std::string end_comment = props_.GetString(end_base.c_str());
 	if (start_comment == "" || end_comment == "") {
-		GUI::gui_string sStart = GUI::StringFromUTF8(start_base);
-		GUI::gui_string sEnd = GUI::StringFromUTF8(end_base);
-		GUI::gui_string error = LocaliseMessage(
+		GUI::GUIString sStart = GUI::StringFromUTF8(start_base);
+		GUI::GUIString sEnd = GUI::StringFromUTF8(end_base);
+		GUI::GUIString error = LocaliseMessage(
 		            "Stream comment variables '^0' and '^1' are not defined in SciTE *.properties!",
 		            sStart.c_str(), sEnd.c_str());
 		WindowMessageBox(wCuteText_, error);
@@ -4279,7 +4279,7 @@ void CuteTextBase::UIAvailable() {
  * Find the character following a name which is made up of characters from
  * the set [a-zA-Z.]
  */
-static GUI::gui_char AfterName(const GUI::gui_char *s) {
+static GUI::GUIChar AfterName(const GUI::GUIChar *s) {
 	while (*s && ((*s == '.') ||
 	        (*s >= 'a' && *s <= 'z') ||
 	        (*s >= 'A' && *s <= 'Z')))
@@ -4304,7 +4304,7 @@ void CuteTextBase::PerformOne(char *action) {
 		} else if (isprefix(action, "cwd:")) {
 			FilePath dirTarget(GUI::StringFromUTF8(arg));
 			if (!dirTarget.SetWorkingDirectory()) {
-				GUI::gui_string msg = LocaliseMessage("Invalid directory '^0'.", dirTarget.AsInternal());
+				GUI::GUIString msg = LocaliseMessage("Invalid directory '^0'.", dirTarget.AsInternal());
 				WindowMessageBox(wCuteText_, msg);
 			}
 		} else if (isprefix(action, "enumproperties:")) {
@@ -4388,7 +4388,7 @@ void CuteTextBase::PerformOne(char *action) {
 	}
 }
 
-static bool IsSwitchCharacter(GUI::gui_char ch) {
+static bool IsSwitchCharacter(GUI::GUIChar ch) {
 #ifdef __unix__
 	return ch == '-';
 #else
@@ -4647,13 +4647,13 @@ void CuteTextBase::ExecuteMacroCommand(const char *command) {
  * to be evaluated before creating the UI.
  * Call twice, first with phase=0, then with phase=1 after creating UI.
  */
-bool CuteTextBase::ProcessCommandLine(const GUI::gui_string &args, int phase) {
+bool CuteTextBase::ProcessCommandLine(const GUI::GUIString &args, int phase) {
 	bool performPrint = false;
 	bool evaluate = phase == 0;
-	std::vector<GUI::gui_string> wlArgs = ListFromString(args);
+	std::vector<GUI::GUIString> wlArgs = ListFromString(args);
 	// Convert args to vector
 	for (size_t i = 0; i < wlArgs.size(); i++) {
-		const GUI::gui_char *arg = wlArgs[i].c_str();
+		const GUI::GUIChar *arg = wlArgs[i].c_str();
 		if (IsSwitchCharacter(arg[0])) {
 			arg++;
 			if (arg[0] == '\0' || (arg[0] == '-' && arg[1] == '\0')) {
@@ -4666,7 +4666,7 @@ bool CuteTextBase::ProcessCommandLine(const GUI::gui_string &args, int phase) {
 				}
 			} else if ((tolower(arg[0]) == 'p') && (arg[1] == 0)) {
 				performPrint = true;
-			} else if (GUI::gui_string(arg) == GUI_TEXT("grep") && (wlArgs.size() - i >= 4)) {
+			} else if (GUI::GUIString(arg) == GUI_TEXT("grep") && (wlArgs.size() - i >= 4)) {
 				// in form -grep [w~][c~][d~][b~] "<file-patterns>" "<search-string>"
 				GrepFlags gf = kGrepStdOut;
 				if (wlArgs[i+1][0] == 'w')

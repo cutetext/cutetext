@@ -29,57 +29,58 @@
 #include "Scintilla.h"
 #include "SciLexer.h"
 
-#include "GUI.h"
-#include "ScintillaWindow.h"
+#include "gui.h"
+#include "scintilla_window.h"
+#include "string_list.h"
+#include "string_helpers.h"
+#include "filepath.h"
+#include "style_definition.h"
+#include "propset_file.h"
+#include "style_writer.h"
+#include "extender.h"
+#include "cutetext.h"
+#include "mutex.h"
+#include "job_queue.h"
 
-#include "StringList.h"
-#include "StringHelpers.h"
-#include "FilePath.h"
-#include "StyleDefinition.h"
-#include "PropSetFile.h"
-#include "StyleWriter.h"
-#include "Extender.h"
-#include "SciTE.h"
-#include "Mutex.h"
-#include "JobQueue.h"
-#include "Cookie.h"
-#include "Worker.h"
-#include "FileWorker.h"
-#include "MatchMarker.h"
-#include "SciTEBase.h"
+#include "cookie.h"
+#include "worker.h"
+#include "fileworker.h"
+#include "match_marker.h"
+#include "editor_config.h"
+#include "cutetext_base.h"
 
-const GUI::gui_char defaultSessionFileName[] = GUI_TEXT("SciTE.session");
+const GUI::GUIChar defaultSessionFileName[] = GUI_TEXT("CuteText.session");
 
 void Buffer::DocumentModified() {
-	documentModTime = time(0);
+	documentModTime_ = time(0);
 }
 
 bool Buffer::NeedsSave(int delayBeforeSave) const {
 	const time_t now = time(0);
-	return now && documentModTime && isDirty && !pFileWorker && (now-documentModTime > delayBeforeSave) && !file.IsUntitled() && !failedSave;
+	return now && documentModTime_ && isDirty_ && !pFileWorker_ && (now-documentModTime_ > delayBeforeSave) && !file_.IsUntitled() && !failedSave_;
 }
 
 void Buffer::CompleteLoading() {
-	lifeState = open;
-	if (pFileWorker && pFileWorker->IsLoading()) {
-		delete pFileWorker;
-		pFileWorker = 0;
+	lifeState_ = kOpen;
+	if (pFileWorker_ && pFileWorker_->IsLoading()) {
+		delete pFileWorker_;
+		pFileWorker_ = 0;
 	}
 }
 
 void Buffer::CompleteStoring() {
-	if (pFileWorker && !pFileWorker->IsLoading()) {
-		delete pFileWorker;
-		pFileWorker = 0;
+	if (pFileWorker_ && !pFileWorker_->IsLoading()) {
+		delete pFileWorker_;
+		pFileWorker_ = 0;
 	}
 	SetTimeFromFile();
 }
 
 void Buffer::AbandonAutomaticSave() {
-	if (pFileWorker && !pFileWorker->IsLoading()) {
-		const FileStorer *pFileStorer = static_cast<FileStorer *>(pFileWorker);
+	if (pFileWorker_ && !pFileWorker_->IsLoading()) {
+		const FileStorer *pFileStorer = static_cast<FileStorer *>(pFileWorker_);
 		if (!pFileStorer->visibleProgress) {
-			pFileWorker->Cancel();
+			pFileWorker_->Cancel();
 			// File is in partially saved state so may be better to remove
 		}
 	}
@@ -87,42 +88,42 @@ void Buffer::AbandonAutomaticSave() {
 
 void Buffer::CancelLoad() {
 	// Complete any background loading
-	if (pFileWorker && pFileWorker->IsLoading()) {
-		pFileWorker->Cancel();
+	if (pFileWorker_ && pFileWorker_->IsLoading()) {
+		pFileWorker_->Cancel();
 		CompleteLoading();
-		lifeState = empty;
+		lifeState_ = kEmpty;
 	}
 }
 
-BufferList::BufferList() : current(0), stackcurrent(0), stack(0), buffers(0), length(0), lengthVisible(0), initialised(false) {}
+BufferList::BufferList() : current_(0), stackcurrent_(0), stack_(0), buffers_(0), length_(0), lengthVisible_(0), initialised_(false) {}
 
 BufferList::~BufferList() {
 }
 
 void BufferList::Allocate(int maxSize) {
-	length = 1;
-	lengthVisible = 1;
-	current = 0;
-	buffers.resize(maxSize);
-	stack.resize(maxSize);
-	stack[0] = 0;
+	length_ = 1;
+	lengthVisible_ = 1;
+	current_ = 0;
+	buffers_.resize(maxSize);
+	stack_.resize(maxSize);
+	stack_[0] = 0;
 }
 
 int BufferList::Add() {
-	if (length < size()) {
-		length++;
+	if (length_ < size()) {
+		length_++;
 	}
-	buffers[length - 1].Init();
-	stack[length - 1] = length - 1;
-	MoveToStackTop(length - 1);
-	SetVisible(length-1, true);
+	buffers_[length_ - 1].Init();
+	stack_[length_ - 1] = length_ - 1;
+	MoveToStackTop(length_ - 1);
+	SetVisible(length_ - 1, true);
 
-	return lengthVisible - 1;
+	return lengthVisible_ - 1;
 }
 
 int BufferList::GetDocumentByWorker(const FileWorker *pFileWorker) const {
-	for (int i = 0;i < length;i++) {
-		if (buffers[i].pFileWorker == pFileWorker) {
+	for (int i = 0;i < length_;i++) {
+		if (buffers_[i].pFileWorker_ == pFileWorker) {
 			return i;
 		}
 	}
@@ -133,8 +134,8 @@ int BufferList::GetDocumentByName(const FilePath &filename, bool excludeCurrent)
 	if (!filename.IsSet()) {
 		return -1;
 	}
-	for (int i = 0;i < length;i++) {
-		if ((!excludeCurrent || i != current) && buffers[i].file.SameNameAs(filename)) {
+	for (int i = 0;i < length_;i++) {
+		if ((!excludeCurrent || i != current_) && buffers_[i].file_.SameNameAs(filename)) {
 			return i;
 		}
 	}
@@ -293,20 +294,20 @@ BackgroundActivities BufferList::CountBackgroundActivities() const {
 	bg.totalWork = 0;
 	bg.totalProgress = 0;
 	for (int i = 0;i < length;i++) {
-		if (buffers[i].pFileWorker) {
-			if (!buffers[i].pFileWorker->FinishedJob()) {
-				if (!buffers[i].pFileWorker->IsLoading()) {
-					const FileStorer *fstorer = static_cast<FileStorer*>(buffers[i].pFileWorker);
+		if (buffers[i].pFileWorker_) {
+			if (!buffers[i].pFileWorker_->FinishedJob()) {
+				if (!buffers[i].pFileWorker_->IsLoading()) {
+					const FileStorer *fstorer = static_cast<FileStorer*>(buffers[i].pFileWorker_);
 					if (!fstorer->visibleProgress)
 						continue;
 				}
-				if (buffers[i].pFileWorker->IsLoading())
+				if (buffers[i].pFileWorker_->IsLoading())
 					bg.loaders++;
 				else
 					bg.storers++;
 				bg.fileNameLast = buffers[i].file.AsInternal();
-				bg.totalWork += buffers[i].pFileWorker->SizeJob();
-				bg.totalProgress += buffers[i].pFileWorker->ProgressMade();
+				bg.totalWork += buffers[i].pFileWorker_->SizeJob();
+				bg.totalProgress += buffers[i].pFileWorker_->ProgressMade();
 			}
 		}
 	}
@@ -315,7 +316,7 @@ BackgroundActivities BufferList::CountBackgroundActivities() const {
 
 bool BufferList::SavingInBackground() const {
 	for (int i = 0; i<length; i++) {
-		if (buffers[i].pFileWorker && !buffers[i].pFileWorker->IsLoading() && !buffers[i].pFileWorker->FinishedJob()) {
+		if (buffers[i].pFileWorker_ && !buffers[i].pFileWorker_->IsLoading() && !buffers[i].pFileWorker_->FinishedJob()) {
 			return true;
 		}
 	}
@@ -412,9 +413,9 @@ void SciTEBase::SetDocumentAt(int index, bool updateStack) {
 	propsDiscovered_ = bufferNext.props_;
 	propsDiscovered_.superPS = &propsLocal_;
 	wEditor_.Call(SCI_SETDOCPOINTER, 0, GetDocumentAt(buffers.Current()));
-	const bool restoreBookmarks = bufferNext.lifeState == Buffer::kReadAll;
+	const bool restoreBookmarks = bufferNext.lifeState_ == Buffer::kReadAll;
 	PerformDeferredTasks();
-	if (bufferNext.lifeState == Buffer::kReadAll) {
+	if (bufferNext.lifeState_ == Buffer::kReadAll) {
 		CompleteOpen(kOcCompleteSwitch);
 		if (extender_)
 			extender_->OnOpen(filePath_.AsUTF8().c_str());
@@ -448,7 +449,7 @@ void SciTEBase::UpdateBuffersCurrent() {
 	if ((buffers.length > 0) && (currentbuf >= 0) && (buffers.GetVisible(currentbuf))) {
 		Buffer &bufferCurrent = buffers.buffers[currentbuf];
 		bufferCurrent.file.Set(filePath_);
-		if (bufferCurrent.lifeState != Buffer::kReading && bufferCurrent.lifeState != Buffer::kReadAll) {
+		if (bufferCurrent.lifeState_ != Buffer::kReading && bufferCurrent.lifeState_ != Buffer::kReadAll) {
 			bufferCurrent.file.selection.position = wEditor_.Call(SCI_GETCURRENTPOS);
 			bufferCurrent.file.selection.anchor = wEditor_.Call(SCI_GETANCHOR);
 			bufferCurrent.file.scrollPosition = GetCurrentScrollPosition();
@@ -536,8 +537,8 @@ void SciTEBase::InitialiseBuffers() {
 	}
 }
 
-FilePath SciTEBase::UserFilePath(const GUI::gui_char *name) {
-	GUI::gui_string nameWithVisibility(configFileVisibilityString);
+FilePath SciTEBase::UserFilePath(const GUI::GUIChar *name) {
+	GUI::GUIString nameWithVisibility(configFileVisibilityString);
 	nameWithVisibility += name;
 	return FilePath(GetSciteUserHome(), nameWithVisibility.c_str());
 }
@@ -553,7 +554,7 @@ static std::string IndexPropKey(const char *bufPrefix, int bufIndex, const char 
 	return pKey;
 }
 
-void SciTEBase::LoadSessionFile(const GUI::gui_char *sessionName) {
+void SciTEBase::LoadSessionFile(const GUI::GUIChar *sessionName) {
 	FilePath sessionPathName;
 	if (sessionName[0] == '\0') {
 		sessionPathName = UserFilePath(defaultSessionFileName);
@@ -691,7 +692,7 @@ void SciTEBase::RestoreSession() {
 	RestoreFromSession(session);
 }
 
-void SciTEBase::SaveSessionFile(const GUI::gui_char *sessionName) {
+void SciTEBase::SaveSessionFile(const GUI::GUIChar *sessionName) {
 	UpdateBuffersCurrent();
 	bool defaultSession;
 	FilePath sessionPathName;
@@ -864,7 +865,7 @@ void SciTEBase::New() {
 	// otherwise add a new buffer.
 	if ((buffers.length > 1) ||
 	        (buffers.Current() != 0) ||
-	        (buffers.buffers[0].isDirty) ||
+	        (buffers.buffers[0].isDirty_) ||
 	        (!buffers.buffers[0].file.IsUntitled())) {
 		if (buffers.size() == buffers.length) {
 			Close(false, false, true);
@@ -880,9 +881,9 @@ void SciTEBase::New() {
 	SetFileName(filePath_);
 	UpdateBuffersCurrent();
 	SetBuffersMenu();
-	CurrentBuffer()->isDirty = false;
+	CurrentBuffer()->isDirty_ = false;
 	CurrentBuffer()->failedSave = false;
-	CurrentBuffer()->lifeState = Buffer::kOpen;
+	CurrentBuffer()->lifeState_ = Buffer::kOpen;
 	jobQueue_.isBuilding = false;
 	jobQueue_.isBuilt = false;
 	CurrentBuffer()->isReadOnly = false;	// No sense to create an empty, read-only buffer...
@@ -941,16 +942,16 @@ void SciTEBase::Close(bool updateUI, bool loadingSession, bool makingRoomForNew)
 			UpdateBuffersCurrent();
 			AddFileToStack(CurrentBufferConst()->file);
 		}
-		closingLast = (buffers.lengthVisible == 1) && !buffers.buffers[0].pFileWorker;
+		closingLast = (buffers.lengthVisible == 1) && !buffers.buffers[0].pFileWorker_;
 		if (closingLast) {
 			buffers.buffers[0].Init();
-			buffers.buffers[0].lifeState = Buffer::kOpen;
+			buffers.buffers[0].lifeState_ = Buffer::kOpen;
 			if (extender_)
 				extender_->InitBuffer(0);
 		} else {
 			if (extender_)
 				extender_->RemoveBuffer(buffers.Current());
-			if (buffers.buffers[buffers.Current()].pFileWorker) {
+			if (buffers.buffers[buffers.Current()].pFileWorker_) {
 				buffers.SetVisible(buffers.Current(), false);
 				if (buffers.lengthVisible == 0)
 					New();
@@ -972,7 +973,7 @@ void SciTEBase::Close(bool updateUI, bool loadingSession, bool makingRoomForNew)
 		propsDiscovered_.superPS = &propsLocal_;
 		wEditor_.Call(SCI_SETDOCPOINTER, 0, GetDocumentAt(buffers.Current()));
 		PerformDeferredTasks();
-		if (bufferNext.lifeState == Buffer::kReadAll) {
+		if (bufferNext.lifeState_ == Buffer::kReadAll) {
 			//restoreBookmarks = true;
 			CompleteOpen(kOcCompleteSwitch);
 			if (extender_)
@@ -1037,7 +1038,7 @@ SciTEBase::SaveResult SciTEBase::SaveAllBuffers(bool alwaysYes) {
 	UpdateBuffersCurrent();
 	const int currentBuffer = buffers.Current();
 	for (int i = 0; (i < buffers.lengthVisible) && (choice != kSaveCancelled); i++) {
-		if (buffers.buffers[i].isDirty) {
+		if (buffers.buffers[i].isDirty_) {
 			SetDocumentAt(i);
 			if (alwaysYes) {
 				if (!Save()) {
@@ -1056,7 +1057,7 @@ void SciTEBase::SaveTitledBuffers() {
 	UpdateBuffersCurrent();
 	const int currentBuffer = buffers.Current();
 	for (int i = 0; i < buffers.lengthVisible; i++) {
-		if (buffers.buffers[i].isDirty && !buffers.buffers[i].file.IsUntitled()) {
+		if (buffers.buffers[i].isDirty_ && !buffers.buffers[i].file.IsUntitled()) {
 			SetDocumentAt(i);
 			Save();
 		}
@@ -1121,12 +1122,12 @@ void SciTEBase::EndStackedTabbing() {
 	buffers.CommitStackSelection();
 }
 
-static void EscapeFilePathsForMenu(GUI::gui_string &path) {
+static void EscapeFilePathsForMenu(GUI::GUIString &path) {
 	// Escape '&' characters in path, since they are interpreted in
 	// menues.
 	Substitute(path, GUI_TEXT("&"), GUI_TEXT("&&"));
 #if defined(GTK)
-	GUI::gui_string homeDirectory = getenv("HOME");
+	GUI::GUIString homeDirectory = getenv("HOME");
 	if (StartsWith(path, homeDirectory)) {
 		path.replace(static_cast<size_t>(0), homeDirectory.size(), GUI_TEXT("~"));
 	}
@@ -1148,13 +1149,13 @@ void SciTEBase::SetBuffersMenu() {
 		SetMenuItem(kMenuBuffers, menuStart, IDM_BUFFERSEP, GUI_TEXT(""));
 		for (pos = 0; pos < buffers.lengthVisible; pos++) {
 			const int itemID = kBufferCmdID + pos;
-			GUI::gui_string entry;
-			GUI::gui_string titleTab;
+			GUI::GUIString entry;
+			GUI::GUIString titleTab;
 
 #if defined(_WIN32) || defined(GTK)
 			if (pos < 10) {
-				GUI::gui_string sPos = GUI::StringFromInteger((pos + 1) % 10);
-				GUI::gui_string sHotKey = GUI_TEXT("&") + sPos + GUI_TEXT(" ");
+				GUI::GUIString sPos = GUI::StringFromInteger((pos + 1) % 10);
+				GUI::GUIString sHotKey = GUI_TEXT("&") + sPos + GUI_TEXT(" ");
 				entry = sHotKey;	// hotkey 1..0
 				if (props_.GetInt("tabbar.hide.index") == 0) {
 #if defined(_WIN32)
@@ -1167,12 +1168,12 @@ void SciTEBase::SetBuffersMenu() {
 #endif
 
 			if (buffers.buffers[pos].file.IsUntitled()) {
-				GUI::gui_string untitled = localiser_.Text("Untitled");
+				GUI::GUIString untitled = localiser_.Text("Untitled");
 				entry += untitled;
 				titleTab += untitled;
 			} else {
-				GUI::gui_string path = buffers.buffers[pos].file.AsInternal();
-				GUI::gui_string filename = buffers.buffers[pos].file.Name().AsInternal();
+				GUI::GUIString path = buffers.buffers[pos].file.AsInternal();
+				GUI::GUIString filename = buffers.buffers[pos].file.Name().AsInternal();
 
 				EscapeFilePathsForMenu(path);
 #if defined(_WIN32)
@@ -1192,7 +1193,7 @@ void SciTEBase::SetBuffersMenu() {
 				titleTab += GUI_TEXT(" |");
 			}
 
-			if (buffers.buffers[pos].isDirty) {
+			if (buffers.buffers[pos].isDirty_) {
 				entry += GUI_TEXT(" *");
 				titleTab += GUI_TEXT(" *");
 			}
@@ -1230,15 +1231,15 @@ void SciTEBase::SetFileStackMenu() {
 		for (int stackPos = 0; stackPos < kFileStackMax; stackPos++) {
 			const int itemID = kFileStackCmdID + stackPos;
 			if (recentFileStack_[stackPos].IsSet()) {
-				GUI::gui_string sEntry;
+				GUI::GUIString sEntry;
 
 #if defined(_WIN32) || defined(GTK)
-				GUI::gui_string sPos = GUI::StringFromInteger((stackPos + 1) % 10);
-				GUI::gui_string sHotKey = GUI_TEXT("&") + sPos + GUI_TEXT(" ");
+				GUI::GUIString sPos = GUI::StringFromInteger((stackPos + 1) % 10);
+				GUI::GUIString sHotKey = GUI_TEXT("&") + sPos + GUI_TEXT(" ");
 				sEntry = sHotKey;
 #endif
 
-				GUI::gui_string path = recentFileStack_[stackPos].AsInternal();
+				GUI::GUIString path = recentFileStack_[stackPos].AsInternal();
 				EscapeFilePathsForMenu(path);
 
 				sEntry += path;
@@ -1261,7 +1262,7 @@ bool SciTEBase::AddFileToBuffer(const BufferState &bufferState) {
 				buffers.buffers[iBuffer].file.selection = bufferState.file.selection;
 				buffers.buffers[iBuffer].foldState = bufferState.foldState;
 				buffers.buffers[iBuffer].bookmarks = bufferState.bookmarks;
-				if (buffers.buffers[iBuffer].lifeState == Buffer::kOpen) {
+				if (buffers.buffers[iBuffer].lifeState_ == Buffer::kOpen) {
 					// File was opened synchronously
 					RestoreState(buffers.buffers[iBuffer], true);
 					DisplayAround(buffers.buffers[iBuffer].file);
@@ -1405,7 +1406,7 @@ void SciTEBase::RemoveToolsMenu() {
 
 void SciTEBase::SetMenuItemLocalised(int menuNumber, int position, int itemID,
         const char *text, const char *mnemonic) {
-	GUI::gui_string localised = localiser_.Text(text);
+	GUI::GUIString localised = localiser_.Text(text);
 	SetMenuItem(menuNumber, position, itemID, localised.c_str(), GUI::StringFromUTF8(mnemonic).c_str());
 }
 
@@ -1486,7 +1487,7 @@ void SciTEBase::ToolsMenu(int item) {
 		if (jobQueue_.IsExecuting() && (jobMode.jobType != jobImmediate))
 			// Busy running a tool and running a second can cause failures.
 			return;
-		if (jobMode.saveBefore == 2 || (jobMode.saveBefore == 1 && (!(CurrentBuffer()->isDirty) || Save())) || SaveIfUnsure() != kSaveCancelled) {
+		if (jobMode.saveBefore == 2 || (jobMode.saveBefore == 1 && (!(CurrentBuffer()->isDirty_) || Save())) || SaveIfUnsure() != kSaveCancelled) {
 			if (jobMode.isFilter)
 				CurrentBuffer()->fileModTime -= 1;
 			if (jobMode.jobType == jobImmediate) {
@@ -1898,7 +1899,7 @@ void SciTEBase::ShowMessages(int line) {
 		if (style == SCE_ERR_GCC) {
 			Chomp(message, ':');
 		}
-		GUI::gui_string sourceString = GUI::StringFromUTF8(source);
+		GUI::GUIString sourceString = GUI::StringFromUTF8(source);
 		FilePath sourcePath = FilePath(sourceString).NormalizePath();
 		if (filePath_.Name().SameNameAs(sourcePath.Name())) {
 			if (style == SCE_ERR_GCC) {
@@ -1979,7 +1980,7 @@ void SciTEBase::GoMessage(int dir) {
 			int column;
 			long sourceLine = DecodeMessage(message.c_str(), source, style, column);
 			if (sourceLine >= 0) {
-				GUI::gui_string sourceString = GUI::StringFromUTF8(source);
+				GUI::GUIString sourceString = GUI::StringFromUTF8(source);
 				FilePath sourcePath = FilePath(sourceString).NormalizePath();
 				if (!filePath_.Name().SameNameAs(sourcePath)) {
 					FilePath messagePath;

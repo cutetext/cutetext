@@ -45,7 +45,7 @@ inline bool IsASCII(int ch) {
 	return (ch >= 0) && (ch < 0x80);
 }
 
-// StringSplit can be expanded over std::string or GUI::gui_string
+// StringSplit can be expanded over std::string or GUI::GUIString
 template <typename T>
 std::vector<T> StringSplit(const T &text, int separator) {
 	std::vector<T> vs(text.empty() ? 0 : 1);
@@ -59,7 +59,7 @@ std::vector<T> StringSplit(const T &text, int separator) {
 	return vs;
 }
 
-inline std::vector<GUI::gui_string> ListFromString(const GUI::gui_string &args) {
+inline std::vector<GUI::GUIString> ListFromString(const GUI::GUIString &args) {
 	return StringSplit(args, '\n');
 }
 
@@ -94,7 +94,7 @@ std::string UnSlashLowOctalString(const char *s);
 
 class ILocalize {
 public:
-	virtual GUI::gui_string Text(const char *s, bool retainIfNotFound=true) = 0;
+	virtual GUI::GUIString Text(const char *s, bool retainIfNotFound=true) = 0;
 };
 
 /**

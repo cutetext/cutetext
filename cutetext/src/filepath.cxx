@@ -49,57 +49,57 @@
 
 #include "Scintilla.h"
 
-#include "GUI.h"
-#include "ScintillaWindow.h"
+#include "gui.h"
+#include "scintilla_window.h"
+#include "filepath.h"
 
-#include "FilePath.h"
 
 #if defined(__unix__)
-const GUI::gui_char pathSepString[] = "/";
-const GUI::gui_char pathSepChar = '/';
-const GUI::gui_char listSepString[] = ":";
-const GUI::gui_char configFileVisibilityString[] = ".";
+const GUI::GUIChar pathSepString[] = "/";
+const GUI::GUIChar pathSepChar = '/';
+const GUI::GUIChar listSepString[] = ":";
+const GUI::GUIChar configFileVisibilityString[] = ".";
 #endif
 #ifdef WIN32
 // Windows
-const GUI::gui_char pathSepString[] = GUI_TEXT("\\");
-const GUI::gui_char pathSepChar = '\\';
-const GUI::gui_char listSepString[] = GUI_TEXT(";");
-const GUI::gui_char configFileVisibilityString[] = GUI_TEXT("");
+const GUI::GUIChar pathSepString[] = GUI_TEXT("\\");
+const GUI::GUIChar pathSepChar = '\\';
+const GUI::GUIChar listSepString[] = GUI_TEXT(";");
+const GUI::GUIChar configFileVisibilityString[] = GUI_TEXT("");
 #endif
 
-const GUI::gui_char fileRead[] = GUI_TEXT("rb");
-const GUI::gui_char fileWrite[] = GUI_TEXT("wb");
+const GUI::GUIChar fileRead[] = GUI_TEXT("rb");
+const GUI::GUIChar fileWrite[] = GUI_TEXT("wb");
 
 namespace {
-const GUI::gui_char currentDirectory[] = GUI_TEXT(".");
-const GUI::gui_char parentDirectory[] = GUI_TEXT("..");
+const GUI::GUIChar currentDirectory[] = GUI_TEXT(".");
+const GUI::GUIChar parentDirectory[] = GUI_TEXT("..");
 }
 
-FilePath::FilePath(const GUI::gui_char *fileName_) : fileName(fileName_ ? fileName_ : GUI_TEXT("")) {}
+FilePath::FilePath(const GUI::GUIChar *fileName) : fileName_(fileName ? fileName : GUI_TEXT("")) {}
 
-FilePath::FilePath(const GUI::gui_string &fileName_) : fileName(fileName_) {}
+FilePath::FilePath(const GUI::GUIString &fileName) : fileName_(fileName) {}
 
 FilePath::FilePath(FilePath const &directory, FilePath const &name) {
 	Set(directory, name);
 }
 
-void FilePath::Set(const GUI::gui_char *fileName_) {
-	fileName = fileName_;
+void FilePath::Set(const GUI::GUIChar *fileName) {
+	fileName_ = fileName;
 }
 
 void FilePath::Set(FilePath const &other) {
-	fileName = other.fileName;
+	fileName_ = other.fileName_;
 }
 
 void FilePath::Set(FilePath const &directory, FilePath const &name) {
 	if (name.IsAbsolute()) {
-		fileName = name.fileName;
+		fileName_ = name.fileName_;
 	} else {
-		fileName = directory.fileName;
-		if (fileName.size() && (fileName[fileName.size()-1] != pathSepChar))
-			fileName += pathSepString;
-		fileName += name.fileName;
+		fileName_ = directory.fileName_;
+		if (fileName_.size() && (fileName_[fileName_.size()-1] != pathSepChar))
+			fileName_ += pathSepString;
+		fileName_ += name.fileName_;
 	}
 }
 
@@ -109,7 +109,7 @@ void FilePath::SetDirectory(FilePath const &directory) {
 }
 
 void FilePath::Init() {
-	fileName.clear();
+	fileName_.clear();
 }
 
 bool FilePath::operator==(const FilePath &other) const {
@@ -117,40 +117,40 @@ bool FilePath::operator==(const FilePath &other) const {
 }
 
 bool FilePath::operator<(const FilePath &other) const {
-	return fileName < other.fileName;
+	return fileName_ < other.fileName_;
 }
 
-bool FilePath::SameNameAs(const GUI::gui_char *other) const {
+bool FilePath::SameNameAs(const GUI::GUIChar *other) const {
 #ifdef WIN32
 	return CSTR_EQUAL == CompareString(LOCALE_SYSTEM_DEFAULT, NORM_IGNORECASE,
-		fileName.c_str(), -1, other, -1);
+		fileName_.c_str(), -1, other, -1);
 #else
-	return fileName == other;
+	return fileName_ == other;
 #endif
 }
 
 bool FilePath::SameNameAs(const FilePath &other) const {
-	return SameNameAs(other.fileName.c_str());
+	return SameNameAs(other.fileName_.c_str());
 }
 
 bool FilePath::IsSet() const {
-	return fileName.length() > 0;
+	return fileName_.length() > 0;
 }
 
 bool FilePath::IsUntitled() const {
-	const size_t dirEnd = fileName.rfind(pathSepChar);
-	return (dirEnd == GUI::gui_string::npos) || (!fileName[dirEnd+1]);
+	const size_t dirEnd = fileName_.rfind(pathSepChar);
+	return (dirEnd == GUI::GUIString::npos) || (!fileName_[dirEnd+1]);
 }
 
 bool FilePath::IsAbsolute() const {
-	if (fileName.length() == 0)
+	if (fileName_.length() == 0)
 		return false;
 #ifdef __unix__
-	if (fileName[0] == '/')
+	if (fileName_[0] == '/')
 		return true;
 #endif
 #ifdef WIN32
-	if (fileName[0] == pathSepChar || fileName[1] == ':')	// UNC path or drive separator
+	if (fileName_[0] == pathSepChar || fileName_[1] == ':')	// UNC path or drive separator
 		return true;
 #endif
 
@@ -159,11 +159,11 @@ bool FilePath::IsAbsolute() const {
 
 bool FilePath::IsRoot() const {
 #ifdef WIN32
-	if ((fileName[0] == pathSepChar) && (fileName[1] == pathSepChar) && (fileName.find(pathSepString, 2) == GUI::gui_string::npos))
+	if ((fileName_[0] == pathSepChar) && (fileName_[1] == pathSepChar) && (fileName_.find(pathSepString, 2) == GUI::GUIString::npos))
         return true; // UNC path like \\server
-	return (fileName.length() == 3) && (fileName[1] == ':') && (fileName[2] == pathSepChar);
+	return (fileName_.length() == 3) && (fileName_[1] == ':') && (fileName_[2] == pathSepChar);
 #else
-	return fileName == "/";
+	return fileName_ == "/";
 #endif
 }
 
@@ -175,57 +175,57 @@ int FilePath::RootLength() {
 #endif
 }
 
-const GUI::gui_char *FilePath::AsInternal() const {
-	return fileName.c_str();
+const GUI::GUIChar *FilePath::AsInternal() const {
+	return fileName_.c_str();
 }
 
 std::string FilePath::AsUTF8() const {
-	return GUI::UTF8FromString(fileName);
+	return GUI::UTF8FromString(fileName_);
 }
 
 FilePath FilePath::Name() const {
-	const size_t dirEnd = fileName.rfind(pathSepChar);
-	if (dirEnd != GUI::gui_string::npos)
-		return fileName.substr(dirEnd + 1);
+	const size_t dirEnd = fileName_.rfind(pathSepChar);
+	if (dirEnd != GUI::GUIString::npos)
+		return fileName_.substr(dirEnd + 1);
 	else
-		return fileName;
+		return fileName_;
 }
 
 FilePath FilePath::BaseName() const {
-	const size_t dirEnd = fileName.rfind(pathSepChar);
-	const size_t extStart = fileName.rfind('.');
-	if (dirEnd != GUI::gui_string::npos) {
+	const size_t dirEnd = fileName_.rfind(pathSepChar);
+	const size_t extStart = fileName_.rfind('.');
+	if (dirEnd != GUI::GUIString::npos) {
 		if (extStart > dirEnd) {
-			return FilePath(fileName.substr(dirEnd + 1, extStart - dirEnd - 1));
+			return FilePath(fileName_.substr(dirEnd + 1, extStart - dirEnd - 1));
 		} else {
-			return FilePath(fileName.substr(dirEnd + 1));
+			return FilePath(fileName_.substr(dirEnd + 1));
 		}
-	} else if (extStart != GUI::gui_string::npos) {
-		return FilePath(fileName.substr(0, extStart));
+	} else if (extStart != GUI::GUIString::npos) {
+		return FilePath(fileName_.substr(0, extStart));
 	} else {
-		return fileName;
+		return fileName_;
 	}
 }
 
 FilePath FilePath::Extension() const {
-	const size_t dirEnd = fileName.rfind(pathSepChar);
-	const size_t extStart = fileName.rfind('.');
-	if ((extStart != GUI::gui_string::npos) && ((dirEnd == GUI::gui_string::npos) || (extStart > dirEnd)))
-		return fileName.substr(extStart + 1);
+	const size_t dirEnd = fileName_.rfind(pathSepChar);
+	const size_t extStart = fileName_.rfind('.');
+	if ((extStart != GUI::GUIString::npos) && ((dirEnd == GUI::GUIString::npos) || (extStart > dirEnd)))
+		return fileName_.substr(extStart + 1);
 	else
 		return GUI_TEXT("");
 }
 
 FilePath FilePath::Directory() const {
 	if (IsRoot()) {
-		return FilePath(fileName.c_str());
+		return FilePath(fileName_.c_str());
 	} else {
-		size_t lenDirectory = fileName.rfind(pathSepChar);
-		if (lenDirectory != GUI::gui_string::npos) {
+		size_t lenDirectory = fileName_.rfind(pathSepChar);
+		if (lenDirectory != GUI::GUIString::npos) {
 			if (lenDirectory < static_cast<size_t>(RootLength())) {
 				lenDirectory = static_cast<size_t>(RootLength());
 			}
-			return FilePath(fileName.substr(0, lenDirectory));
+			return FilePath(fileName_.substr(0, lenDirectory));
 		} else {
 			return FilePath();
 		}
@@ -274,19 +274,19 @@ static int stat(const wchar_t *path, struct _stat *buffer) {
 #endif
 
 FilePath FilePath::NormalizePath() const {
-	if (fileName.empty()) {
+	if (fileName_.empty()) {
 		return FilePath();
 	}
-	GUI::gui_string path(fileName);
+	GUI::GUIString path(fileName_);
 #ifdef WIN32
 	// Convert unix path separators to Windows
 	std::replace(path.begin(), path.end(), L'/', pathSepChar);
 #endif
-	GUI::gui_string_view source = path;
-	GUI::gui_string absPathString;
+	GUI::GUIStringView source = path;
+	GUI::GUIString absPathString;
 	// Result is always same size or shorter so can allocate once for maximum
 	// possible and avoid a reallocation for common path lengths.
-	absPathString.reserve(fileName.length());
+	absPathString.reserve(fileName_.length());
 	if (source.front() == pathSepChar) {
 		absPathString.push_back(pathSepChar);
 		source.remove_prefix(1);
@@ -295,12 +295,12 @@ FilePath FilePath::NormalizePath() const {
 	while (true) {
 		const size_t separator = source.find_first_of(pathSepChar);
 		// If no pathSepChar then separator == npos, so substr -> rest of string, OK
-		const GUI::gui_string_view part = source.substr(0, separator);
+		const GUI::GUIStringView part = source.substr(0, separator);
 		if (part != currentDirectory) {
 			bool appendPart = true;
 			if (part == parentDirectory) {
 				const size_t last = absPathString.find_last_of(pathSepChar);
-				if (last != GUI::gui_string::npos) {
+				if (last != GUI::GUIString::npos) {
 					// Erase the last component from the path separator, unless that would erase
 					// the entire string, in which case leave a single path separator.
 					const size_t truncPoint = (last > 0) ? last : last + 1;
@@ -314,7 +314,7 @@ FilePath FilePath::NormalizePath() const {
 				absPathString.append(part);
 			}
 		}
-		if (separator == GUI::gui_string::npos)	// Consumed last part
+		if (separator == GUI::GUIString::npos)	// Consumed last part
 			break;
 		source.remove_prefix(separator+1);
 	}
@@ -329,9 +329,9 @@ FilePath FilePath::AbsolutePath() const {
 #ifdef WIN32
 	// The runtime libraries for GCC and Visual C++ give different results for _fullpath
 	// so use the OS.
-	GUI::gui_char absPath[2000];
+	GUI::GUIChar absPath[2000];
 	absPath[0] = '\0';
-	GUI::gui_char *fileBit = 0;
+	GUI::GUIChar *fileBit = 0;
 	::GetFullPathNameW(AsInternal(), sizeof(absPath)/sizeof(absPath[0]), absPath, &fileBit);
 	return FilePath(absPath);
 #else
@@ -346,7 +346,7 @@ FilePath FilePath::AbsolutePath() const {
 // Only used on Windows to fix the case of file names
 
 FilePath FilePath::GetWorkingDirectory() {
-	GUI::gui_char dir[MAX_PATH + 1];
+	GUI::GUIChar dir[MAX_PATH + 1];
 	dir[0] = '\0';
 	if (getcwd(dir, MAX_PATH)) {
 		dir[MAX_PATH] = '\0';
@@ -413,9 +413,9 @@ void FilePath::List(FilePathSet &directories, FilePathSet &files) const {
 	std::sort(directories.begin(), directories.end());
 }
 
-FILE *FilePath::Open(const GUI::gui_char *mode) const {
+FILE *FilePath::Open(const GUI::GUIChar *mode) const {
 	if (IsSet()) {
-		return fopen(fileName.c_str(), mode);
+		return fopen(fileName_.c_str(), mode);
 	} else {
 		return NULL;
 	}
@@ -522,7 +522,7 @@ bool FilePath::IsDirectory() const {
 namespace {
 
 #ifdef _WIN32
-void Lowercase(GUI::gui_string &s) {
+void Lowercase(GUI::GUIString &s) {
 	const int chars = ::LCMapString(LOCALE_SYSTEM_DEFAULT, LCMAP_LOWERCASE, s.c_str(), static_cast<int>(s.size())+1, NULL, 0);
 	std::vector<wchar_t> vc(chars);
 	::LCMapString(LOCALE_SYSTEM_DEFAULT, LCMAP_LOWERCASE, s.c_str(), static_cast<int>(s.size())+1, &vc[0], chars);
@@ -530,7 +530,7 @@ void Lowercase(GUI::gui_string &s) {
 }
 #endif
 
-bool PatternMatch(GUI::gui_string_view pattern, GUI::gui_string_view text) {
+bool PatternMatch(GUI::GUIStringView pattern, GUI::GUIStringView text) {
 	if (pattern == text) {
 		return true;
 	} else if (pattern.empty()) {
@@ -562,9 +562,9 @@ bool PatternMatch(GUI::gui_string_view pattern, GUI::gui_string_view text) {
 
 }
 
-bool FilePath::Matches(const GUI::gui_char *pattern) const {
-	GUI::gui_string pat(pattern);
-	GUI::gui_string nameCopy(Name().fileName);
+bool FilePath::Matches(const GUI::GUIChar *pattern) const {
+	GUI::GUIString pat(pattern);
+	GUI::GUIString nameCopy(Name().fileName_);
 #ifdef _WIN32
 	Lowercase(pat);
 	Lowercase(nameCopy);
@@ -572,7 +572,7 @@ bool FilePath::Matches(const GUI::gui_char *pattern) const {
 	std::replace(pat.begin(), pat.end(), ' ', '\0');
 	size_t start = 0;
 	while (start < pat.length()) {
-		const GUI::gui_char *patElement = pat.c_str() + start;
+		const GUI::GUIChar *patElement = pat.c_str() + start;
 		if (PatternMatch(patElement, nameCopy)) {
 			return true;
 		}
@@ -591,11 +591,11 @@ bool FilePath::Matches(const GUI::gui_char *pattern) const {
  * @returns true on success, and the long path in @a longPath,
  * false on failure.
  */
-static bool MakeLongPath(const GUI::gui_char* shortPath, GUI::gui_string &longPath) {
+static bool MakeLongPath(const GUI::GUIChar* shortPath, GUI::GUIString &longPath) {
 	if (!*shortPath) {
 		return false;
 	}
-	typedef DWORD (STDAPICALLTYPE* GetLongSig)(const GUI::gui_char* lpszShortPath, GUI::gui_char* lpszLongPath, DWORD cchBuffer);
+	typedef DWORD (STDAPICALLTYPE* GetLongSig)(const GUI::GUIChar* lpszShortPath, GUI::GUIChar* lpszLongPath, DWORD cchBuffer);
 	static GetLongSig pfnGetLong = NULL;
 	static bool kernelTried = false;
 
@@ -611,7 +611,7 @@ static bool MakeLongPath(const GUI::gui_char* shortPath, GUI::gui_string &longPa
 	if (!pfnGetLong) {
 		return false;
 	}
-	GUI::gui_string gsLong(1, L'\0');
+	GUI::GUIString gsLong(1, L'\0');
 	// Call with too-short string returns size + terminating NUL
 	const DWORD size = (pfnGetLong)(shortPath, &gsLong[0], 0);
 	if (size == 0) {
@@ -630,13 +630,13 @@ static bool MakeLongPath(const GUI::gui_char* shortPath, GUI::gui_string &longPa
 void FilePath::FixName() {
 #ifdef WIN32
 	// Only used on Windows to use long file names and fix the case of file names
-	GUI::gui_string longPath;
+	GUI::GUIString longPath;
 	// first try MakeLongPath which corrects the path and the case of filename too
 	if (MakeLongPath(AsInternal(), longPath)) {
 		Set(longPath);
 	} else {
 		// On Windows file comparison is done case insensitively so the user can
-		// enter scite.cxx and still open this file, SciTE.cxx. To ensure that the file
+		// enter cutetext.cxx and still open this file, CuteText.cxx. To ensure that the file
 		// is saved with correct capitalisation FindFirstFile is used to find out the
 		// real name of the file.
 		WIN32_FIND_DATAW FindFileData;
@@ -660,7 +660,7 @@ bool FilePath::CaseSensitive() {
 #endif
 }
 
-std::string CommandExecute(const GUI::gui_char *command, const GUI::gui_char *directoryForRun) {
+std::string CommandExecute(const GUI::GUIChar *command, const GUI::GUIChar *directoryForRun) {
 	std::string output;
 #ifdef _WIN32
 	SECURITY_ATTRIBUTES sa = {sizeof(SECURITY_ATTRIBUTES), NULL, TRUE};
@@ -753,7 +753,7 @@ std::string CommandExecute(const GUI::gui_char *command, const GUI::gui_char *di
 		}
 		pclose(fp);
 	}
-	startDirectory.SetWorkingDirectory();
+	startDirectory.SetWorkingDirectory();  // Restore
 #endif
 	return output;
 }

@@ -53,20 +53,20 @@
 #include "Utf8_16.h"
 
 #if defined(GTK)
-const GUI::gui_char propUserFileName[] = GUI_TEXT(".SciTEUser.properties");
+const GUI::GUIChar propUserFileName[] = GUI_TEXT(".SciTEUser.properties");
 #elif defined(__APPLE__)
-const GUI::gui_char propUserFileName[] = GUI_TEXT("SciTEUser.properties");
+const GUI::GUIChar propUserFileName[] = GUI_TEXT("SciTEUser.properties");
 #else
 // Windows
-const GUI::gui_char propUserFileName[] = GUI_TEXT("SciTEUser.properties");
+const GUI::GUIChar propUserFileName[] = GUI_TEXT("SciTEUser.properties");
 #endif
-const GUI::gui_char propGlobalFileName[] = GUI_TEXT("SciTEGlobal.properties");
-const GUI::gui_char propAbbrevFileName[] = GUI_TEXT("abbrev.properties");
+const GUI::GUIChar propGlobalFileName[] = GUI_TEXT("SciTEGlobal.properties");
+const GUI::GUIChar propAbbrevFileName[] = GUI_TEXT("abbrev.properties");
 
 void SciTEBase::SetFileName(const FilePath &openName, bool fixCase) {
 	if (openName.AsInternal()[0] == '\"') {
 		// openName is surrounded by double quotes
-		GUI::gui_string pathCopy = openName.AsInternal();
+		GUI::GUIString pathCopy = openName.AsInternal();
 		pathCopy = pathCopy.substr(1, pathCopy.size() - 2);
 		filePath_.Set(pathCopy);
 	} else {
@@ -99,7 +99,7 @@ void SciTEBase::SetFileName(const FilePath &openName, bool fixCase) {
 // See if path exists.
 // If path is not absolute, it is combined with dir.
 // If resultPath is not NULL, it receives the absolute path if it exists.
-bool SciTEBase::Exists(const GUI::gui_char *dir, const GUI::gui_char *path, FilePath *resultPath) {
+bool SciTEBase::Exists(const GUI::GUIChar *dir, const GUI::GUIChar *path, FilePath *resultPath) {
 	FilePath copy(path);
 	if (!copy.IsAbsolute() && dir) {
 		copy.SetDirectory(dir);
@@ -252,7 +252,7 @@ void SciTEBase::OpenCurrentFile(long long fileSize, bool suppressMessage, bool a
 	if (CurrentBuffer()->pFileWorker) {
 		// Already performing an asynchronous load or save so do not restart load
 		if (!suppressMessage) {
-			GUI::gui_string msg = LocaliseMessage("Could not open file '^0'.", filePath_.AsInternal());
+			GUI::GUIString msg = LocaliseMessage("Could not open file '^0'.", filePath_.AsInternal());
 			WindowMessageBox(wCuteText_, msg);
 		}
 		return;
@@ -261,7 +261,7 @@ void SciTEBase::OpenCurrentFile(long long fileSize, bool suppressMessage, bool a
 	FILE *fp = filePath_.Open(fileRead);
 	if (!fp) {
 		if (!suppressMessage) {
-			GUI::gui_string msg = LocaliseMessage("Could not open file '^0'.", filePath_.AsInternal());
+			GUI::GUIString msg = LocaliseMessage("Could not open file '^0'.", filePath_.AsInternal());
 			WindowMessageBox(wCuteText_, msg);
 		}
 		if (!wEditor_.Call(SCI_GETUNDOCOLLECTION)) {
@@ -346,7 +346,7 @@ void SciTEBase::TextRead(FileWorker *pFileWorker) {
 		buffers_.buffers_[iBuffer].unicodeMode = pFileLoader->unicodeMode;
 		buffers_.buffers_[iBuffer].lifeState = Buffer::kReadAll;
 		if (pFileLoader->err) {
-			GUI::gui_string msg = LocaliseMessage("Could not open file '^0'.", pFileLoader->path.AsInternal());
+			GUI::GUIString msg = LocaliseMessage("Could not open file '^0'.", pFileLoader->path.AsInternal());
 			WindowMessageBox(wCuteText_, msg);
 			// Should refuse to save when failure occurs
 			buffers_.buffers_[iBuffer].lifeState = Buffer::kEmpty;
@@ -466,7 +466,7 @@ void SciTEBase::TextWritten(FileWorker *pFileWorker) {
 			}
 		}
 	} else {
-		GUI::gui_string msg = LocaliseMessage("Could not find buffer '^0'.", pathSaved.AsInternal());
+		GUI::GUIString msg = LocaliseMessage("Could not find buffer '^0'.", pathSaved.AsInternal());
 		WindowMessageBox(wCuteText_, msg);
 	}
 
@@ -487,7 +487,7 @@ void SciTEBase::TextWritten(FileWorker *pFileWorker) {
 }
 
 void SciTEBase::UpdateProgress(Worker *) {
-	GUI::gui_string prog;
+	GUI::GUIString prog;
 	BackgroundActivities bgActivities = buffers_.CountBackgroundActivities();
 	const int countBoth = bgActivities.loaders + bgActivities.storers;
 	if (countBoth == 0) {
@@ -509,7 +509,7 @@ void SciTEBase::UpdateProgress(Worker *) {
 	}
 }
 
-bool SciTEBase::PreOpenCheck(const GUI::gui_char *) {
+bool SciTEBase::PreOpenCheck(const GUI::GUIChar *) {
 	return false;
 }
 
@@ -518,7 +518,7 @@ bool SciTEBase::Open(const FilePath &file, OpenFlags of) {
 
 	FilePath absPath = file.AbsolutePath();
 	if (!absPath.IsUntitled() && absPath.IsDirectory()) {
-		GUI::gui_string msg = LocaliseMessage("Path '^0' is a directory so can not be opened.",
+		GUI::GUIString msg = LocaliseMessage("Path '^0' is a directory so can not be opened.",
 			absPath.AsInternal());
 		WindowMessageBox(wCuteText_, msg);
 		return false;
@@ -542,8 +542,8 @@ bool SciTEBase::Open(const FilePath &file, OpenFlags of) {
 
 	const long long fileSize = absPath.IsUntitled() ? 0 : absPath.GetFileLength();
 	if (fileSize > INTPTR_MAX) {
-		const GUI::gui_string sSize = GUI::StringFromLongLong(fileSize);
-		const GUI::gui_string msg = LocaliseMessage("File '^0' is ^1 bytes long, "
+		const GUI::GUIString sSize = GUI::StringFromLongLong(fileSize);
+		const GUI::GUIString msg = LocaliseMessage("File '^0' is ^1 bytes long, "
 			"larger than 2GB which is the largest SciTE can open.",
 			absPath.AsInternal(), sSize.c_str());
 		WindowMessageBox(wCuteText_, msg, kMbsIconWarning);
@@ -553,9 +553,9 @@ bool SciTEBase::Open(const FilePath &file, OpenFlags of) {
 		// Real file, not empty buffer
 		const long long maxSize = props_.GetLongLong("max.file.size", 2000000000LL);
 		if (maxSize > 0 && fileSize > maxSize) {
-			const GUI::gui_string sSize = GUI::StringFromLongLong(fileSize);
-			const GUI::gui_string sMaxSize = GUI::StringFromLongLong(maxSize);
-			const GUI::gui_string msg = LocaliseMessage("File '^0' is ^1 bytes long,\n"
+			const GUI::GUIString sSize = GUI::StringFromLongLong(fileSize);
+			const GUI::GUIString sMaxSize = GUI::StringFromLongLong(maxSize);
+			const GUI::GUIString msg = LocaliseMessage("File '^0' is ^1 bytes long,\n"
 			        "larger than the ^2 bytes limit set in the properties.\n"
 			        "Do you still want to open it?",
 			        absPath.AsInternal(), sSize.c_str(), sMaxSize.c_str());
@@ -707,17 +707,17 @@ bool SciTEBase::OpenSelected() {
 	FilePath path;
 	// Don't load the path of the current file if the selected
 	// filename is an absolute pathname
-	GUI::gui_string selFN = GUI::StringFromUTF8(selName);
+	GUI::GUIString selFN = GUI::StringFromUTF8(selName);
 	if (!FilePath(selFN).IsAbsolute()) {
 		path = filePath_.Directory();
 		// If not there, look in openpath
 		if (!Exists(path.AsInternal(), selFN.c_str(), NULL)) {
-			GUI::gui_string openPath = GUI::StringFromUTF8(props_.GetNewExpandString(
+			GUI::GUIString openPath = GUI::StringFromUTF8(props_.GetNewExpandString(
 			            "openpath.", fileNameForExtension.c_str()));
 			while (openPath.length()) {
-				GUI::gui_string tryPath(openPath);
+				GUI::GUIString tryPath(openPath);
 				const size_t sepIndex = tryPath.find(listSepString);
-				if ((sepIndex != GUI::gui_string::npos) && (sepIndex != 0)) {
+				if ((sepIndex != GUI::GUIString::npos) && (sepIndex != 0)) {
 					tryPath.erase(sepIndex);
 					openPath.erase(0, sepIndex + 1);
 				} else {
@@ -772,7 +772,7 @@ void SciTEBase::CheckReload() {
 			const OpenFlags of = props_.GetInt("reload.preserves.undo") ? kOfPreserveUndo : kOfNone;
 			if (CurrentBuffer()->isDirty || props_.GetInt("are.you.sure.on.reload") != 0) {
 				if ((0 == dialogsOnScreen_) && (newModTime != CurrentBuffer()->fileModLastAsk)) {
-					GUI::gui_string msg;
+					GUI::GUIString msg;
 					if (CurrentBuffer()->isDirty) {
 						msg = LocaliseMessage(
 						          "The file '^0' has been modified. Should it be reloaded?",
@@ -801,7 +801,7 @@ void SciTEBase::CheckReload() {
 			CheckMenus();
 			SetWindowName();
 			SetBuffersMenu();
-			GUI::gui_string msg = LocaliseMessage(
+			GUI::GUIString msg = LocaliseMessage(
 						      "The file '^0' has been deleted.",
 						      filePath_.AsInternal());
 			WindowMessageBox(wCuteText_, msg, kMbsOK);
@@ -820,7 +820,7 @@ void SciTEBase::Activate(bool activeApp) {
 }
 
 FilePath SciTEBase::SaveName(const char *ext) const {
-	GUI::gui_string savePath = filePath_.AsInternal();
+	GUI::GUIString savePath = filePath_.AsInternal();
 	if (ext) {
 		int dot = static_cast<int>(savePath.length() - 1);
 		while ((dot >= 0) && (savePath[dot] != '.')) {
@@ -853,7 +853,7 @@ SciTEBase::SaveResult SciTEBase::SaveIfUnsure(bool forceQuestion, SaveFlags sf) 
 		if (props_.GetInt("are.you.sure", 1) ||
 		        filePath_.IsUntitled() ||
 		        forceQuestion) {
-					GUI::gui_string msg;
+					GUI::GUIString msg;
 			if (!filePath_.IsUntitled()) {
 				msg = LocaliseMessage("Save changes to '^0'?", filePath_.AsInternal());
 			} else {
@@ -1099,7 +1099,7 @@ bool SciTEBase::SaveBuffer(const FilePath &saveName, SaveFlags sf) {
 				if (PerformOnNewThread(CurrentBuffer()->pFileWorker)) {
 					retVal = true;
 				} else {
-					GUI::gui_string msg = LocaliseMessage("Failed to save file '^0' as thread could not be started.", saveName.AsInternal());
+					GUI::GUIString msg = LocaliseMessage("Failed to save file '^0' as thread could not be started.", saveName.AsInternal());
 					WindowMessageBox(wCuteText_, msg);
 				}
 			} else {
@@ -1153,7 +1153,7 @@ void SciTEBase::ReloadProperties() {
 // Returns false if cancelled or failed to save
 bool SciTEBase::Save(SaveFlags sf) {
 	if (!filePath_.IsUntitled()) {
-		GUI::gui_string msg;
+		GUI::GUIString msg;
 		if (CurrentBuffer()->ShouldNotSave()) {
 			msg = LocaliseMessage(
 				"The file '^0' has not yet been loaded entirely, so it can not be saved right now. Please retry in a while.",
@@ -1233,7 +1233,7 @@ bool SciTEBase::Save(SaveFlags sf) {
 	}
 }
 
-void SciTEBase::SaveAs(const GUI::gui_char *file, bool fixCase) {
+void SciTEBase::SaveAs(const GUI::GUIChar *file, bool fixCase) {
 	SetFileName(file, fixCase);
 	Save();
 	ReadProperties();
@@ -1250,7 +1250,7 @@ bool SciTEBase::SaveIfNotOpen(const FilePath &destFile, bool fixCase) {
 	FilePath absPath = destFile.AbsolutePath();
 	const int index = buffers_.GetDocumentByName(absPath, true /* excludeCurrent */);
 	if (index >= 0) {
-		GUI::gui_string msg = LocaliseMessage(
+		GUI::GUIString msg = LocaliseMessage(
 			    "File '^0' is already open in another buffer.", destFile.AsInternal());
 		WindowMessageBox(wCuteText_, msg);
 		return false;
@@ -1463,7 +1463,7 @@ static bool IsWordCharacter(int ch) {
 }
 
 bool SciTEBase::GrepIntoDirectory(const FilePath &directory) {
-    const GUI::gui_char *sDirectory = directory.AsInternal();
+    const GUI::GUIChar *sDirectory = directory.AsInternal();
 #ifdef __APPLE__
     if (strcmp(sDirectory, "build") == 0)
         return false;
@@ -1471,7 +1471,7 @@ bool SciTEBase::GrepIntoDirectory(const FilePath &directory) {
     return sDirectory[0] != '.';
 }
 
-void SciTEBase::GrepRecursive(GrepFlags gf, const FilePath &baseDir, const char *searchString, const GUI::gui_char *fileTypes) {
+void SciTEBase::GrepRecursive(GrepFlags gf, const FilePath &baseDir, const char *searchString, const GUI::GUIChar *fileTypes) {
 	const int checkAfterLines = 10'000;
 	FilePathSet directories;
 	FilePathSet files;
@@ -1529,7 +1529,7 @@ void SciTEBase::GrepRecursive(GrepFlags gf, const FilePath &baseDir, const char 
 	}
 }
 
-void SciTEBase::InternalGrep(GrepFlags gf, const GUI::gui_char *directory, const GUI::gui_char *fileTypes, const char *search, sptr_t &originalEnd) {
+void SciTEBase::InternalGrep(GrepFlags gf, const GUI::GUIChar *directory, const GUI::GUIChar *fileTypes, const char *search, sptr_t &originalEnd) {
 	GUI::ElapsedTime commandTime;
 	if (!(gf & kGrepStdOut)) {
 		std::string os;

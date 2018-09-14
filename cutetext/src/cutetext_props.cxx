@@ -36,11 +36,11 @@
 
 #if defined(__unix__)
 
-const GUI::gui_char menuAccessIndicator[] = GUI_TEXT("_");
+const GUI::GUIChar menuAccessIndicator[] = GUI_TEXT("_");
 
 #else
 
-const GUI::gui_char menuAccessIndicator[] = GUI_TEXT("&");
+const GUI::GUIChar menuAccessIndicator[] = GUI_TEXT("&");
 
 #endif
 
@@ -69,7 +69,7 @@ void SciTEBase::SetImportMenu() {
 		for (int stackPos = 0; stackPos < static_cast<int>(importFiles_.size()) && stackPos < kImportMax; stackPos++) {
 			const int itemID = kImportCmdID + stackPos;
 			if (importFiles_[stackPos].IsSet()) {
-				GUI::gui_string entry = localiser_.Text("Open");
+				GUI::GUIString entry = localiser_.Text("Open");
 				entry += GUI_TEXT(" ");
 				entry += importFiles_[stackPos].Name().AsInternal();
 				SetMenuItem(kMenuOptions, IMPORT_START + stackPos, itemID, entry.c_str());
@@ -92,7 +92,7 @@ void SciTEBase::SetLanguageMenu() {
 	}
 	for (unsigned int item = 0; item < languageMenu_.size(); item++) {
 		const int itemID = kLanguageCmdID + item;
-		GUI::gui_string entry = localiser_.Text(languageMenu_[item].menuItem.c_str());
+		GUI::GUIString entry = localiser_.Text(languageMenu_[item].menuItem.c_str());
 		if (languageMenu_[item].menuKey.length()) {
 #if defined(GTK)
 			entry += GUI_TEXT(" ");
@@ -111,8 +111,8 @@ void SciTEBase::SetLanguageMenu() {
 void SciTEBase::ReadEmbeddedProperties() {
 }
 
-const GUI::gui_char propLocalFileName[] = GUI_TEXT("SciTE.properties");
-const GUI::gui_char propDirectoryFileName[] = GUI_TEXT("SciTEDirectory.properties");
+const GUI::GUIChar propLocalFileName[] = GUI_TEXT("SciTE.properties");
+const GUI::GUIChar propDirectoryFileName[] = GUI_TEXT("SciTEDirectory.properties");
 
 void SciTEBase::ReadEnvironment() {
 #if defined(__unix__)
@@ -1401,7 +1401,7 @@ void SciTEBase::ReadProperties() {
 		FilePath scriptPath;
 
 		// Check for an extension script
-		GUI::gui_string extensionFile = GUI::StringFromUTF8(
+		GUI::GUIString extensionFile = GUI::StringFromUTF8(
 			props_.GetNewExpandString("extension.", fileNameForExtension.c_str()));
 		if (extensionFile.length()) {
 			// find file in local directory
@@ -1542,7 +1542,7 @@ void SciTEBase::SetPropertiesInitial() {
 	focusOnReplace = props_.GetInt("find.replacewith.focus", 1);
 }
 
-GUI::gui_string Localization::Text(const char *s, bool retainIfNotFound) {
+GUI::GUIString Localization::Text(const char *s, bool retainIfNotFound) {
 	const std::string sEllipse("...");	// An ASCII ellipse
 	const std::string utfEllipse("\xe2\x80\xa6");	// A UTF-8 ellipse
 	std::string translation = s;
@@ -1584,8 +1584,8 @@ GUI::gui_string Localization::Text(const char *s, bool retainIfNotFound) {
 	return GUI::StringFromUTF8(s);
 }
 
-GUI::gui_string SciTEBase::LocaliseMessage(const char *s, const GUI::gui_char *param0, const GUI::gui_char *param1, const GUI::gui_char *param2) {
-	GUI::gui_string translation = localiser_.Text(s);
+GUI::GUIString SciTEBase::LocaliseMessage(const char *s, const GUI::GUIChar *param0, const GUI::GUIChar *param1, const GUI::GUIChar *param2) {
+	GUI::GUIString translation = localiser_.Text(s);
 	if (param0)
 		Substitute(translation, GUI_TEXT("^0"), param0);
 	if (param1)
@@ -1597,7 +1597,7 @@ GUI::gui_string SciTEBase::LocaliseMessage(const char *s, const GUI::gui_char *p
 
 void SciTEBase::ReadLocalization() {
 	localiser_.Clear();
-	GUI::gui_string title = GUI_TEXT("locale.properties");
+	GUI::GUIString title = GUI_TEXT("locale.properties");
 	const std::string localeProps = props_.GetExpandedString("locale.properties");
 	if (localeProps.length()) {
 		title = GUI::StringFromUTF8(localeProps);
@@ -1726,7 +1726,7 @@ void SciTEBase::OpenProperties(int propsFile) {
 		Open(propfile, kOfQuiet);
 		break;
 	case IDM_OPENLUAEXTERNALFILE: {
-			GUI::gui_string extlua = GUI::StringFromUTF8(props_.GetExpandedString("ext.lua.startup.script"));
+			GUI::GUIString extlua = GUI::StringFromUTF8(props_.GetExpandedString("ext.lua.startup.script"));
 			if (extlua.length()) {
 				Open(extlua.c_str(), kOfQuiet);
 			}

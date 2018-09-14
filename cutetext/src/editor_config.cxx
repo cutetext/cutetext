@@ -46,7 +46,7 @@ public:
 	void Clear() override;
 };
 
-const GUI::gui_char editorConfigName[] = GUI_TEXT(".editorconfig");
+const GUI::GUIChar editorConfigName[] = GUI_TEXT(".editorconfig");
 
 bool PatternMatch(std::u32string_view pattern, std::u32string_view text) {
 	if (pattern == text) {

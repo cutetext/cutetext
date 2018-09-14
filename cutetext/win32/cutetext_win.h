@@ -140,7 +140,7 @@ protected:
     void SizeSubWindows() override;
 
     void SetMenuItem(int menuNumber, int position, int itemID,
-        const GUI::gui_char *text, const GUI::gui_char *mnemonic = 0) override;
+        const GUI::GUIChar *text, const GUI::GUIChar *mnemonic = 0) override;
     void RedrawMenu() override;
     void DestroyMenuItem(int menuNumber, int itemID) override;
     void CheckAMenuItem(int wIDCheckItem, bool val) override;
@@ -154,10 +154,10 @@ protected:
 
     int DoDialog(const TCHAR *resName, DLGPROC lpProc);
     HWND CreateParameterisedDialog(LPCWSTR lpTemplateName, DLGPROC lpProc);
-    GUI::gui_string DialogFilterFromProperty(const GUI::gui_char *filterProperty);
+    GUI::GUIString DialogFilterFromProperty(const GUI::GUIChar *filterProperty);
     void CheckCommonDialogError();
-    bool OpenDialog(const FilePath &directory, const GUI::gui_char *filesFilter) override;
-    FilePath ChooseSaveName(const FilePath &directory, const char *title, const GUI::gui_char *filesFilter = 0, const char *ext = 0);
+    bool OpenDialog(const FilePath &directory, const GUI::GUIChar *filesFilter) override;
+    FilePath ChooseSaveName(const FilePath &directory, const char *title, const GUI::GUIChar *filesFilter = 0, const char *ext = 0);
     bool SaveAsDialog() override;
     void SaveACopy() override;
     void SaveAsHTML() override;
@@ -167,7 +167,7 @@ protected:
     void SaveAsXML() override;
     void LoadSessionDialog() override;
     void SaveSessionDialog() override;
-    bool PreOpenCheck(const GUI::gui_char *arg) override;
+    bool PreOpenCheck(const GUI::GUIChar *arg) override;
     bool IsStdinBlocked() override;
 
     /// Print the current buffer.
@@ -177,13 +177,13 @@ protected:
 
     BOOL HandleReplaceCommand(int cmd, bool reverseDirection = false);
 
-    MessageBoxChoice WindowMessageBox(GUI::Window &w, const GUI::gui_string &msg, MessageBoxStyle style = kMbsIconWarning) override;
+    MessageBoxChoice WindowMessageBox(GUI::Window &w, const GUI::GUIString &msg, MessageBoxStyle style = kMbsIconWarning) override;
     void FindMessageBox(const std::string &msg, const std::string *findItem = 0) override;
     void AboutDialog() override;
     void DropFiles(HDROP hdrop);
     void MinimizeToTray();
     void RestoreFromTray();
-    static GUI::gui_string ProcessArgs(const GUI::gui_char *cmdLine);
+    static GUI::GUIString ProcessArgs(const GUI::GUIChar *cmdLine);
     void QuitProgram() override;
 
     FilePath GetDefaultDirectory() override;
@@ -193,7 +193,7 @@ protected:
     void SetFileProperties(PropSetFile &ps) override;
     void SetStatusBarText(const char *s) override;
 
-    void TabInsert(int index, const GUI::gui_char *title) override;
+    void TabInsert(int index, const GUI::GUIChar *title) override;
     void TabSelect(int index) override;
     void RemoveAllTabs() override;
 
@@ -218,7 +218,7 @@ protected:
     void UserStripSetList(int control, const char *value) override;
     std::string UserStripValue(int control) override;
     void UserStripClosed();
-    void ShowBackgroundProgress(const GUI::gui_string &explanation, size_t size, size_t progress) override;
+    void ShowBackgroundProgress(const GUI::GUIString &explanation, size_t size, size_t progress) override;
     BOOL FindMessage(HWND hDlg, UINT message, WPARAM wParam);
     static INT_PTR CALLBACK FindDlg(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
     BOOL ReplaceMessage(HWND hDlg, UINT message, WPARAM wParam);
@@ -270,9 +270,9 @@ public:
 
     void CreateUI();
     /// Management of the command line parameters.
-    void Run(const GUI::gui_char *cmdLine);
+    void Run(const GUI::GUIChar *cmdLine);
     uptr_t EventLoop();
-    void OutputAppendEncodedStringSynchronised(const GUI::gui_string &s, int codePageDocument);
+    void OutputAppendEncodedStringSynchronised(const GUI::GUIString &s, int codePageDocument);
     void ResetExecution();
     void ExecuteNext();
     DWORD ExecuteOne(const Job &jobToRun);

@@ -13,13 +13,13 @@
 class UserControl {
 public:
 	enum UCControlType { ucStatic, ucEdit, ucCombo, ucButton, ucDefaultButton } controlType;
-	GUI::gui_string text;
+	GUI::GUIString text;
 	int item;
 	bool fixedWidth;
 	int widthDesired;
 	int widthAllocated;
 	GUI::Window w;
-	UserControl(UCControlType controlType_, const GUI::gui_string &text_, int item_) :
+	UserControl(UCControlType controlType_, const GUI::GUIString &text_, int item_) :
 		controlType(controlType_),
 		text(text_),
 		item(item_),
@@ -44,12 +44,12 @@ public:
 	std::vector<std::vector<UserControl> > controls;
 	std::vector<ColumnWidth> widths;
 
-	explicit StripDefinition(GUI::gui_string definition) {
+	explicit StripDefinition(GUI::GUIString definition) {
 		hasClose = false;
 		controls.clear();
 		columns = 0;
 		controls.push_back(std::vector<UserControl>());
-		const GUI::gui_char *pdef=definition.c_str();
+		const GUI::GUIChar *pdef=definition.c_str();
 		int line = 0;
 		unsigned int column = 0;
 		int item = 0;
@@ -67,7 +67,7 @@ public:
 				continue;
 			}
 			UserControl::UCControlType controlType = UserControl::ucStatic;
-			GUI::gui_char endChar = 0;
+			GUI::GUIChar endChar = 0;
 			switch (*pdef) {
 				case '\'':
 					controlType = UserControl::ucStatic;
@@ -92,7 +92,7 @@ public:
 					break;
 			}
 			pdef++;
-			GUI::gui_string text;
+			GUI::GUIString text;
 			while (*pdef && (*pdef != endChar)) {
 				text += *pdef;
 				pdef++;
